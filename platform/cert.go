@@ -1,8 +1,6 @@
-//
 // Copyright (c) 2022-2023 Winlin
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
 package main
 
 import (
@@ -26,7 +24,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/ossrs/go-oryx-lib/errors"
-	"github.com/ossrs/go-oryx-lib/logger"
+	"github.com/victorcastro89/livecom/logger"
 )
 
 var certManager *CertManager

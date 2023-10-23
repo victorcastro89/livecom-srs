@@ -1,8 +1,6 @@
-//
 // Copyright (c) 2022-2023 Winlin
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
 package main
 
 import (
@@ -10,7 +8,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -19,9 +16,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
+
+	"livecom/logger"
+
 	"github.com/ossrs/go-oryx-lib/errors"
 	ohttp "github.com/ossrs/go-oryx-lib/http"
-	"github.com/ossrs/go-oryx-lib/logger"
 
 	// Use v8 because we use Go 1.16+, while v9 requires Go 1.18+
 	"github.com/go-redis/redis/v8"
@@ -57,6 +57,10 @@ func (v *httpService) Close() error {
 	return nil
 }
 
+
+
+
+
 func (v *httpService) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
@@ -64,6 +68,9 @@ func (v *httpService) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	handler := http.NewServeMux()
+
+
+	
 	if err := handleHTTPService(ctx, handler); err != nil {
 		return errors.Wrapf(err, "handle service")
 	}
@@ -76,7 +83,7 @@ func (v *httpService) Run(ctx context.Context) error {
 		}
 		logger.Tf(ctx, "HTTP listen at %v", addr)
 
-		server := &http.Server{Addr: addr, Handler: handler}
+		server := &http.Server{Addr: addr, Handler: handler }
 		v.servers = append(v.servers, server)
 
 		wg.Add(1)
@@ -176,8 +183,9 @@ func (v *httpService) Run(ctx context.Context) error {
 }
 
 func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
-	ohttp.Server = fmt.Sprintf("srs-stack/%v", version)
 
+	ohttp.Server = fmt.Sprintf("srs-stack/%v", version)
+	
 	if err := forwardWorker.Handle(ctx, handler); err != nil {
 		return errors.Wrapf(err, "handle forward")
 	}
@@ -189,8 +197,15 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 	if err := handleHooksService(ctx, handler); err != nil {
 		return errors.Wrapf(err, "handle hooks")
 	}
+	
+	if err := handleWebApiService(ctx, handler); err != nil {
+		return errors.Wrapf(err, "handleWebApiService Function")
+	}
 
+	
 	var ep string
+	
+	
 
 	handleHostVersions(ctx, handler)
 	handleMgmtVersions(ctx, handler)
@@ -243,9 +258,11 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 		}
 	}()
 
+	
 	ep = "/"
 	logger.Tf(ctx, "Handle %v", ep)
 	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+
 		// Set common header.
 		ohttp.SetHeader(w)
 
@@ -256,6 +273,14 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 			return
 		}
 
+		// 		// For version management.
+		// if strings.HasPrefix(r.URL.Path, "/webapi") {
+		// 	logger.Tf(ctx, "Proxy %v to backend 2023", r.URL.Path)
+		// 	proxy2023.ServeHTTP(w, r)
+		// 	return
+		// }
+
+			
 		// For version management.
 		if strings.HasPrefix(r.URL.Path, "/terraform/v1/releases") {
 			logger.Tf(ctx, "Proxy %v to backend 2023", r.URL.Path)
@@ -331,6 +356,8 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 
 	return nil
 }
+
+
 
 func handleHostVersions(ctx context.Context, handler *http.ServeMux) {
 	ep := "/terraform/v1/host/versions"

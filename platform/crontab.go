@@ -1,8 +1,6 @@
-//
 // Copyright (c) 2022-2023 Winlin
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
 package main
 
 import (
@@ -10,8 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"livecom/logger"
+
 	"github.com/ossrs/go-oryx-lib/errors"
-	"github.com/ossrs/go-oryx-lib/logger"
 )
 
 var crontabWorker *CrontabWorker
@@ -30,25 +29,26 @@ func (v *CrontabWorker) Close() error {
 }
 
 func (v *CrontabWorker) Start(ctx context.Context) error {
-	v.wg.Add(1)
-	go func() {
-		defer v.wg.Done()
+//Disabled Reports to SRS Server
+	// v.wg.Add(1)
+	// go func() {
+	// 	defer v.wg.Done()
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(time.Duration(24*3600) * time.Second):
-			}
+	// 	for {
+	// 		select {
+	// 		case <-ctx.Done():
+	// 			return
+	// 		case <-time.After(time.Duration(24*3600) * time.Second):
+	// 		}
 
-			logger.Tf(ctx, "crontab: start to query latest version")
-			if versions, err := queryLatestVersion(ctx); err != nil {
-				logger.Wf(ctx, "crontab: ignore err %v", err)
-			} else {
-				logger.Tf(ctx, "crontab: query version ok, result is %v", versions.String())
-			}
-		}
-	}()
+	// 		logger.Tf(ctx, "crontab: start to query latest version")
+	// 		if versions, err := queryLatestVersion(ctx); err != nil {
+	// 			logger.Wf(ctx, "crontab: ignore err %v", err)
+	// 		} else {
+	// 			logger.Tf(ctx, "crontab: query version ok, result is %v", versions.String())
+	// 		}
+	// 	}
+	// }()
 
 	v.wg.Add(1)
 	go func() {

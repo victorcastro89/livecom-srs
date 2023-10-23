@@ -1,14 +1,13 @@
-//
 // Copyright (c) 2022-2023 Winlin
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
-//
 package main
 
 import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -18,8 +17,12 @@ import (
 	"syscall"
 	"time"
 
+	"livecom/logger"
+	database "livecom/pkg/db"
+	"livecom/pkg/firebaseauth"
+
+	"github.com/getsentry/sentry-go"
 	"github.com/ossrs/go-oryx-lib/errors"
-	"github.com/ossrs/go-oryx-lib/logger"
 
 	// Use v8 because we use Go 1.16+, while v9 requires Go 1.18+
 	"github.com/go-redis/redis/v8"
@@ -30,6 +33,50 @@ import (
 // conf is a global config object.
 var conf *Config
 
+
+
+func setLogLevelFromEnv() {
+	envLogLevel := os.Getenv("LOG_LEVEL")
+	if envLogLevel == "" {
+		log.Println("LOG_LEVEL not set, defaulting to TRACE")
+		return
+	}
+
+	switch strings.ToUpper(envLogLevel) {
+	case "INFO":
+		logger.SetLogLevel(logger.LevelInfo)
+	case "TRACE":
+		logger.SetLogLevel(logger.LevelTrace)
+	case "WARN":
+		logger.SetLogLevel(logger.LevelWarn)
+	case "ERROR":
+		logger.SetLogLevel(logger.LevelError)
+	default:
+		log.Printf("Invalid LOG_LEVEL %s, defaulting to TRACE\n", envLogLevel)
+	}
+}
+// SentryWriter is an io.Writer implementation that sends log messages to Sentry.
+type SentryWriter struct{}
+
+func (sw *SentryWriter) Write(p []byte) (n int, err error) {
+	sentry.CaptureMessage(string(p))
+	return len(p), nil
+}
+
+
+func LogToSentry(){
+		err := sentry.Init(sentry.ClientOptions{
+		Dsn: "https://6a2599e89a604b72bbd2fad9d0c35a1e@o422232.ingest.sentry.io/6559808",
+	})
+	if err != nil {
+		logger.E("sentry.Init: %s", err)
+	}
+
+	// Wait for sentry to send the events before closing the program
+	defer sentry.Flush(2 * time.Second)
+	logger.Switch(&SentryWriter{})
+
+}
 func init() {
 	certManager = NewCertManager()
 	conf = NewConfig()
@@ -38,7 +85,7 @@ func init() {
 func main() {
 	ctx := logger.WithContext(context.Background())
 	ctx = logger.WithContext(ctx)
-
+	
 	if err := doMain(ctx); err != nil {
 		logger.Tf(ctx, "run err %+v", err)
 		return
@@ -48,6 +95,15 @@ func main() {
 }
 
 func doMain(ctx context.Context) error {
+	setLogLevelFromEnv()
+
+	//LogToSentry()
+
+	// // Log a message. It will be sent to Sentry.
+	 logger.Tf(ctx,"This is a test log message sent to Sentry!")
+
+
+	 
 	var showVersion bool
 	flag.BoolVar(&showVersion, "v", false, "Print version and quit")
 	flag.BoolVar(&showVersion, "version", false, "Print version and quit")
@@ -114,6 +170,21 @@ func doMain(ctx context.Context) error {
 		os.Getenv("REGISTRY"), os.Getenv("MGMT_LISTEN"), os.Getenv("HTTPS_LISTEN"),
 		os.Getenv("AUTO_SELF_SIGNED_CERTIFICATE"),
 	)
+
+
+
+	// Initialize Firebase Auth
+	_, err := firebaseauth.Initialize("./livecom-e7fdc-firebase-admin.json")
+	if err != nil {
+			return errors.Wrapf(err, "Error initializing Firebase Auth")
+	}
+
+	//Init PSQL 
+	_, err = database.NewDatabase(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return errors.Wrapf(err, "Unable to init PSQL Database")
+		
+	}
 
 	// Setup the base OS for redis, which should never depends on redis.
 	if err := initMgmtOS(ctx); err != nil {
@@ -377,7 +448,7 @@ func initPlatform(ctx context.Context) error {
 	}
 
 	// For development, request the releases from itself which proxy to the releases service.
-	go refreshLatestVersion(ctx)
+	// go refreshLatestVersion(ctx)
 
 	// Disable srs-dev, only enable srs-server.
 	if srsDevEnabled, err := rdb.HGet(ctx, SRS_CONTAINER_DISABLED, srsDevDockerName).Result(); err != nil && err != redis.Nil {

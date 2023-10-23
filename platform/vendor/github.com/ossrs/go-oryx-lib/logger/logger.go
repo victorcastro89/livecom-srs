@@ -20,18 +20,23 @@
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // The oryx logger package provides connection-oriented log service.
-//		logger.I(ctx, ...)
-//		logger.T(ctx, ...)
-//		logger.W(ctx, ...)
-//		logger.E(ctx, ...)
+//
+//	logger.I(ctx, ...)
+//	logger.T(ctx, ...)
+//	logger.W(ctx, ...)
+//	logger.E(ctx, ...)
+//
 // Or use format:
-//		logger.If(ctx, format, ...)
-//		logger.Tf(ctx, format, ...)
-//		logger.Wf(ctx, format, ...)
-//		logger.Ef(ctx, format, ...)
+//
+//	logger.If(ctx, format, ...)
+//	logger.Tf(ctx, format, ...)
+//	logger.Wf(ctx, format, ...)
+//	logger.Ef(ctx, format, ...)
+//
 // @remark the Context is optional thus can be nil.
 // @remark From 1.7+, the ctx could be context.Context, wrap by logger.WithContext,
-// 	please read ExampleLogger_ContextGO17().
+//
+//	please read ExampleLogger_ContextGO17().
 package logger
 
 import (
@@ -189,7 +194,7 @@ type Logger interface {
 }
 
 func init() {
-	Info = NewLoggerPlus(log.New(ioutil.Discard, logInfoLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
+	Info = NewLoggerPlus(log.New(os.Stdout, logInfoLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Trace = NewLoggerPlus(log.New(os.Stdout, logTraceLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Warn = NewLoggerPlus(log.New(os.Stderr, logWarnLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Error = NewLoggerPlus(log.New(os.Stderr, logErrorLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
@@ -203,7 +208,7 @@ func init() {
 // @remark user must close previous io for logger never close it.
 func Switch(w io.Writer) io.Writer {
 	// TODO: support level, default to trace here.
-	Info = NewLoggerPlus(log.New(ioutil.Discard, logInfoLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
+	Info = NewLoggerPlus(log.New(w, logInfoLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Trace = NewLoggerPlus(log.New(w, logTraceLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Warn = NewLoggerPlus(log.New(w, logWarnLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
 	Error = NewLoggerPlus(log.New(w, logErrorLabel, log.Ldate|log.Ltime|log.Lmicroseconds))
