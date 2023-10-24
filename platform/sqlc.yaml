@@ -1,19 +1,11 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: "sqlc/userQuery.sql"
-    schema: "sqlc/userSchema.sql"
+    queries: ["pkg/db/query/userQuery.sql", "pkg/db/query/livesQuery.sql"]
+    schema: "db/migrations"
     gen:
       go:
-        package: "users"
+        package: "db"
         sql_package: "pgx/v5"
-        out: "pkg/domain/users"
+        out: "pkg/db/"
 
-  - engine: "postgresql"
-    queries: "sqlc/livesQuery.sql"
-    schema: "sqlc/livesSchema.sql"
-    gen:
-      go:
-        package: "lives"
-        sql_package: "pgx/v5"
-        out: "pkg/domain/lives"        

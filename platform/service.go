@@ -19,6 +19,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"livecom/logger"
+	"livecom/pkg/api"
 
 	"github.com/ossrs/go-oryx-lib/errors"
 	ohttp "github.com/ossrs/go-oryx-lib/http"
@@ -30,7 +31,7 @@ import (
 // HttpService is a HTTP server for platform.
 type HttpService interface {
 	Close() error
-	Run(ctx context.Context) error
+	Run(ctx context.Context, handlers api.Handlers) error
 }
 
 func NewHTTPService() HttpService {
@@ -61,17 +62,17 @@ func (v *httpService) Close() error {
 
 
 
-func (v *httpService) Run(ctx context.Context) error {
+func (v *httpService) Run(ctx context.Context,handlers api.Handlers) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	handler := http.NewServeMux()
+	mux := http.NewServeMux()
 
 
 	
-	if err := handleHTTPService(ctx, handler); err != nil {
+	if err := handleHTTPService(ctx, mux,handlers); err != nil {
 		return errors.Wrapf(err, "handle service")
 	}
 
@@ -83,7 +84,7 @@ func (v *httpService) Run(ctx context.Context) error {
 		}
 		logger.Tf(ctx, "HTTP listen at %v", addr)
 
-		server := &http.Server{Addr: addr, Handler: handler }
+		server := &http.Server{Addr: addr, Handler: mux }
 		v.servers = append(v.servers, server)
 
 		wg.Add(1)
@@ -113,7 +114,7 @@ func (v *httpService) Run(ctx context.Context) error {
 		}
 		logger.Tf(ctx, "HTTP listen at %v", addr)
 
-		server := &http.Server{Addr: addr, Handler: handler}
+		server := &http.Server{Addr: addr, Handler: mux}
 		v.servers = append(v.servers, server)
 
 		wg.Add(1)
@@ -145,7 +146,7 @@ func (v *httpService) Run(ctx context.Context) error {
 
 		server := &http.Server{
 			Addr:    addr,
-			Handler: handler,
+			Handler: mux,
 			TLSConfig: &tls.Config{
 				GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 					return certManager.httpsCertificate, nil
@@ -182,51 +183,51 @@ func (v *httpService) Run(ctx context.Context) error {
 	return nil
 }
 
-func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
+func handleHTTPService(ctx context.Context, mux *http.ServeMux, handlers api.Handlers) error {
 
 	ohttp.Server = fmt.Sprintf("srs-stack/%v", version)
 	
-	if err := forwardWorker.Handle(ctx, handler); err != nil {
+	if err := forwardWorker.Handle(ctx, mux); err != nil {
 		return errors.Wrapf(err, "handle forward")
 	}
 
-	if err := vLiveWorker.Handle(ctx, handler); err != nil {
+	if err := vLiveWorker.Handle(ctx, mux); err != nil {
 		return errors.Wrapf(err, "handle vLive")
 	}
 
-	if err := handleHooksService(ctx, handler); err != nil {
+	if err := handleHooksService(ctx, mux); err != nil {
 		return errors.Wrapf(err, "handle hooks")
 	}
 	
-	if err := handleWebApiService(ctx, handler); err != nil {
+	if err := api.SetupWebApiRoutes(ctx,  handlers,mux); err != nil {
 		return errors.Wrapf(err, "handleWebApiService Function")
 	}
-
+	
 	
 	var ep string
 	
 	
 
-	handleHostVersions(ctx, handler)
-	handleMgmtVersions(ctx, handler)
-	handleFFmpegVersions(ctx, handler)
-	handleMgmtInit(ctx, handler)
-	handleMgmtCheck(ctx, handler)
-	handleMgmtEnvs(ctx, handler)
-	handleMgmtToken(ctx, handler)
-	handleMgmtLogin(ctx, handler)
-	handleMgmtStatus(ctx, handler)
-	handleMgmtBilibili(ctx, handler)
-	handleMgmtBeianQuery(ctx, handler)
-	handleMgmtSecretQuery(ctx, handler)
-	handleMgmtBeianUpdate(ctx, handler)
-	handleMgmtNginxHlsUpdate(ctx, handler)
-	handleMgmtNginxHlsQuery(ctx, handler)
-	handleMgmtAutoSelfSignedCertificate(ctx, handler)
-	handleMgmtSsl(ctx, handler)
-	handleMgmtLetsEncrypt(ctx, handler)
-	handleMgmtCertQuery(ctx, handler)
-	handleMgmtUI(ctx, handler)
+	handleHostVersions(ctx, mux)
+	handleMgmtVersions(ctx, mux)
+	handleFFmpegVersions(ctx, mux)
+	handleMgmtInit(ctx, mux)
+	handleMgmtCheck(ctx, mux)
+	handleMgmtEnvs(ctx, mux)
+	handleMgmtToken(ctx, mux)
+	handleMgmtLogin(ctx, mux)
+	handleMgmtStatus(ctx, mux)
+	handleMgmtBilibili(ctx, mux)
+	handleMgmtBeianQuery(ctx, mux)
+	handleMgmtSecretQuery(ctx, mux)
+	handleMgmtBeianUpdate(ctx, mux)
+	handleMgmtNginxHlsUpdate(ctx, mux)
+	handleMgmtNginxHlsQuery(ctx, mux)
+	handleMgmtAutoSelfSignedCertificate(ctx, mux)
+	handleMgmtSsl(ctx, mux)
+	handleMgmtLetsEncrypt(ctx, mux)
+	handleMgmtCertQuery(ctx, mux)
+	handleMgmtUI(ctx, mux)
 
 	proxy2023, err := httpCreateProxy("http://127.0.0.1:2023")
 	if err != nil {
@@ -261,7 +262,7 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 	
 	ep = "/"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 
 		// Set common header.
 		ohttp.SetHeader(w)
@@ -359,10 +360,10 @@ func handleHTTPService(ctx context.Context, handler *http.ServeMux) error {
 
 
 
-func handleHostVersions(ctx context.Context, handler *http.ServeMux) {
+func handleHostVersions(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/host/versions"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		ohttp.WriteData(ctx, w, r, &struct {
 			Version string `json:"version"`
 		}{
@@ -371,10 +372,10 @@ func handleHostVersions(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtVersions(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtVersions(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/versions"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		ohttp.WriteData(ctx, w, r, &struct {
 			Version string `json:"version"`
 		}{
@@ -383,10 +384,10 @@ func handleMgmtVersions(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleFFmpegVersions(ctx context.Context, handler *http.ServeMux) {
+func handleFFmpegVersions(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/ffmpeg/versions"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		ohttp.WriteData(ctx, w, r, &struct {
 			Version string `json:"version"`
 		}{
@@ -395,10 +396,10 @@ func handleFFmpegVersions(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtInit(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtInit(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/init"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			b, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -468,10 +469,10 @@ func handleMgmtInit(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtCheck(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtCheck(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/check"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			// Check whether redis is ok.
 			if r0, err := rdb.HGet(ctx, SRS_AUTH_SECRET, "pubSecret").Result(); err != nil && err != redis.Nil {
@@ -498,10 +499,10 @@ func handleMgmtCheck(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtEnvs(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtEnvs(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/envs"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			ohttp.WriteData(ctx, w, r, &struct {
 				MgmtDocker bool `json:"mgmtDocker"`
@@ -515,10 +516,10 @@ func handleMgmtEnvs(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtToken(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtToken(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/token"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -554,11 +555,11 @@ func handleMgmtToken(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtLogin(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtLogin(ctx context.Context, mux *http.ServeMux) {
 	var loginLock sync.Mutex
 	ep := "/terraform/v1/mgmt/login"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			if !loginLock.TryLock() {
 				return errors.New("login is running, try later")
@@ -620,10 +621,10 @@ func handleMgmtLogin(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtStatus(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtStatus(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/status"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -663,10 +664,10 @@ func handleMgmtStatus(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtBilibili(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtBilibili(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/bilibili"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token, bvid string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -756,10 +757,10 @@ func handleMgmtBilibili(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtBeianQuery(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtBeianQuery(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/beian/query"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			r0, err := rdb.HGetAll(ctx, SRS_BEIAN).Result()
 			if err != nil && err != redis.Nil {
@@ -775,10 +776,10 @@ func handleMgmtBeianQuery(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtSecretQuery(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtSecretQuery(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/secret/query"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -803,10 +804,10 @@ func handleMgmtSecretQuery(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtBeianUpdate(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtBeianUpdate(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/beian/update"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token, beian, text string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -844,10 +845,10 @@ func handleMgmtBeianUpdate(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtNginxHlsUpdate(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtNginxHlsUpdate(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/hphls/update"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			var noHlsCtx bool
@@ -883,10 +884,10 @@ func handleMgmtNginxHlsUpdate(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtNginxHlsQuery(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtNginxHlsQuery(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/hphls/query"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -922,10 +923,10 @@ func handleMgmtNginxHlsQuery(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtAutoSelfSignedCertificate(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtAutoSelfSignedCertificate(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/auto-self-signed-certificate"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -954,10 +955,10 @@ func handleMgmtAutoSelfSignedCertificate(ctx context.Context, handler *http.Serv
 	})
 }
 
-func handleMgmtSsl(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtSsl(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/ssl"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			var key, crt string
@@ -1004,10 +1005,10 @@ func handleMgmtSsl(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtLetsEncrypt(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtLetsEncrypt(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/letsencrypt"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			var domain string
@@ -1053,10 +1054,10 @@ func handleMgmtLetsEncrypt(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtCertQuery(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtCertQuery(ctx context.Context, mux *http.ServeMux) {
 	ep := "/terraform/v1/mgmt/cert/query"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(ep, func(w http.ResponseWriter, r *http.Request) {
 		if err := func() error {
 			var token string
 			if err := ParseBody(ctx, r.Body, &struct {
@@ -1108,7 +1109,7 @@ func handleMgmtCertQuery(ctx context.Context, handler *http.ServeMux) {
 	})
 }
 
-func handleMgmtUI(ctx context.Context, handler *http.ServeMux) {
+func handleMgmtUI(ctx context.Context, mux *http.ServeMux) {
 	// Serve UI at platform.
 	fileRoot := path.Join(conf.Pwd, "../ui/build", os.Getenv("REACT_APP_LOCALE"))
 
@@ -1140,9 +1141,9 @@ func handleMgmtUI(ctx context.Context, handler *http.ServeMux) {
 
 	ep := "/mgmt"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, mgmtHandler)
+	mux.HandleFunc(ep, mgmtHandler)
 
 	ep = "/mgmt/"
 	logger.Tf(ctx, "Handle %v", ep)
-	handler.HandleFunc(ep, mgmtHandler)
+	mux.HandleFunc(ep, mgmtHandler)
 }

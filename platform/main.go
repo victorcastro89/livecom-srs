@@ -18,10 +18,13 @@ import (
 	"time"
 
 	"livecom/logger"
-	database "livecom/pkg/db"
+	"livecom/pkg/api"
+	"livecom/pkg/db"
+	"livecom/pkg/domain/users"
 	"livecom/pkg/firebaseauth"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/jackc/pgx/v5"
 	"github.com/ossrs/go-oryx-lib/errors"
 
 	// Use v8 because we use Go 1.16+, while v9 requires Go 1.18+
@@ -102,7 +105,6 @@ func doMain(ctx context.Context) error {
 	// // Log a message. It will be sent to Sentry.
 	 logger.Tf(ctx,"This is a test log message sent to Sentry!")
 
-
 	 
 	var showVersion bool
 	flag.BoolVar(&showVersion, "v", false, "Print version and quit")
@@ -179,13 +181,39 @@ func doMain(ctx context.Context) error {
 			return errors.Wrapf(err, "Error initializing Firebase Auth")
 	}
 
+
+
 	//Init PSQL 
-	_, err = database.NewDatabase(os.Getenv("DATABASE_URL"))
-	if err != nil {
-		return errors.Wrapf(err, "Unable to init PSQL Database")
+	// _, err = database.NewDatabase(os.Getenv("DATABASE_URL"))
+	// if err != nil {
+	// 	return errors.Wrapf(err, "Unable to init PSQL Database")
 		
+	// }
+	fmt.Printf("PG\n")
+	ctx1, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := pgx.Connect(ctx1, "postgresql://livecom:livecom@localhost/livecom?sslmode=disable&connect_timeout=5")
+    if err != nil {
+            fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+            os.Exit(1)
+    }
+  
+
+	// dbpool, err := pgxpool.New(ctx, "postgresql://livecom:livecom@docker.internal/livecom?sslmode=disable&connect_timeout=5")
+	// if err != nil {
+	// 	return errors.Wrapf(err, "Unable to init PSQL Database") 
+
+	// }
+	// defer dbpool.Close()
+
+    q := db.New(conn)
+	fmt.Printf("Hello\n")
+	userService :=users.NewService(q);
+	handlers:= api.Handlers{
+		UserHandle: users.NewUserHandler(userService),
 	}
 
+	
 	// Setup the base OS for redis, which should never depends on redis.
 	if err := initMgmtOS(ctx); err != nil {
 		return errors.Wrapf(err, "init mgmt os")
@@ -259,7 +287,7 @@ func doMain(ctx context.Context) error {
 	// Run HTTP service.
 	httpService := NewHTTPService()
 	defer httpService.Close()
-	if err := httpService.Run(ctx); err != nil {
+	if err := httpService.Run(ctx,handlers); err != nil {
 		return errors.Wrapf(err, "start http service")
 	}
 
