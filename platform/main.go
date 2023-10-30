@@ -18,10 +18,11 @@ import (
 	"time"
 
 	"livecom/logger"
-	"livecom/pkg/api"
+	"livecom/pkg/config"
 	"livecom/pkg/db"
-	"livecom/pkg/domain/users"
 	"livecom/pkg/firebaseauth"
+	handlers "livecom/pkg/handlers"
+	services "livecom/pkg/services"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/jackc/pgx/v5"
@@ -98,14 +99,20 @@ func main() {
 }
 
 func doMain(ctx context.Context) error {
-	setLogLevelFromEnv()
-
+	//setLogLevelFromEnv()
+	logger.SetLogLevel(logger.LevelInfo)
 	//LogToSentry()
 
 	// // Log a message. It will be sent to Sentry.
 	 logger.Tf(ctx,"This is a test log message sent to Sentry!")
 
-	 
+	 //Load Config file
+	 if _, err := config.Load(); err != nil {
+        log.Fatal(err)
+    }
+
+	
+
 	var showVersion bool
 	flag.BoolVar(&showVersion, "v", false, "Print version and quit")
 	flag.BoolVar(&showVersion, "version", false, "Print version and quit")
@@ -207,11 +214,9 @@ func doMain(ctx context.Context) error {
 	// defer dbpool.Close()
 
     q := db.New(conn)
-	fmt.Printf("Hello\n")
-	userService :=users.NewService(q);
-	handlers:= api.Handlers{
-		UserHandle: users.NewUserHandler(userService),
-	}
+
+	userService :=services.New(q);
+	handlers:= handlers.New(userService);
 
 	
 	// Setup the base OS for redis, which should never depends on redis.

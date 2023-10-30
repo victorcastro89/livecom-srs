@@ -12,32 +12,70 @@ import (
 )
 
 const createLive = `-- name: CreateLive :one
-INSERT INTO lives (live_id, user_id, title, description, start_time, end_time, stream_url) 
-VALUES ($1, $2, $3, $4, $5, $6, $7) 
-RETURNING live_id, user_id, title, description, start_time, end_time, stream_url, created_at
+INSERT INTO live (user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret, stream_broadcast_url)
+VALUES (
+  $1,
+  $2,
+  $3,
+  $4,
+  $5,
+  $6,
+  $7,
+  $8,
+  $9,
+  pgp_sym_encrypt($10, $11::text),
+  pgp_sym_encrypt($12, $11::text)
+)
+RETURNING live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, pgp_sym_decrypt(live_secret,$11::text) as live_secret, pgp_sym_decrypt(stream_broadcast_url,$11::text) as stream_broadcast_url, created_at
 `
 
 type CreateLiveParams struct {
-	LiveID      int32
-	UserID      pgtype.UUID
-	Title       string
-	Description pgtype.Text
-	StartTime   pgtype.Timestamp
-	EndTime     pgtype.Timestamp
-	StreamUrl   pgtype.Text
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         string
+	Encryptionkey      string
+	StreamBroadcastUrl string
 }
 
-func (q *Queries) CreateLive(ctx context.Context, arg CreateLiveParams) (Life, error) {
+type CreateLiveRow struct {
+	LiveID             int32
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         string
+	StreamBroadcastUrl string
+	CreatedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) CreateLive(ctx context.Context, arg CreateLiveParams) (CreateLiveRow, error) {
 	row := q.db.QueryRow(ctx, createLive,
-		arg.LiveID,
 		arg.UserID,
 		arg.Title,
 		arg.Description,
 		arg.StartTime,
 		arg.EndTime,
-		arg.StreamUrl,
+		arg.ScheduledStartTime,
+		arg.ScheduledEndTime,
+		arg.LiveAppName,
+		arg.StreamName,
+		arg.LiveSecret,
+		arg.Encryptionkey,
+		arg.StreamBroadcastUrl,
 	)
-	var i Life
+	var i CreateLiveRow
 	err := row.Scan(
 		&i.LiveID,
 		&i.UserID,
@@ -45,14 +83,20 @@ func (q *Queries) CreateLive(ctx context.Context, arg CreateLiveParams) (Life, e
 		&i.Description,
 		&i.StartTime,
 		&i.EndTime,
-		&i.StreamUrl,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.LiveAppName,
+		&i.StreamName,
+		&i.LiveSecret,
+		&i.StreamBroadcastUrl,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const deleteLive = `-- name: DeleteLive :exec
-DELETE FROM lives WHERE live_id = $1
+DELETE FROM live
+WHERE live_id = $1
 `
 
 func (q *Queries) DeleteLive(ctx context.Context, liveID int32) error {
@@ -61,12 +105,35 @@ func (q *Queries) DeleteLive(ctx context.Context, liveID int32) error {
 }
 
 const getLiveByID = `-- name: GetLiveByID :one
-SELECT live_id, user_id, title, description, start_time, end_time, stream_url, created_at FROM lives WHERE live_id = $1
+SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, pgp_sym_decrypt(live_secret,$2::text) as live_secret, pgp_sym_decrypt(stream_broadcast_url,$2::text) as stream_broadcast_url, created_at
+FROM live
+WHERE live_id = $1
 `
 
-func (q *Queries) GetLiveByID(ctx context.Context, liveID int32) (Life, error) {
-	row := q.db.QueryRow(ctx, getLiveByID, liveID)
-	var i Life
+type GetLiveByIDParams struct {
+	LiveID        int32
+	Encryptionkey string
+}
+
+type GetLiveByIDRow struct {
+	LiveID             int32
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         string
+	StreamBroadcastUrl string
+	CreatedAt          pgtype.Timestamptz
+}
+
+func (q *Queries) GetLiveByID(ctx context.Context, arg GetLiveByIDParams) (GetLiveByIDRow, error) {
+	row := q.db.QueryRow(ctx, getLiveByID, arg.LiveID, arg.Encryptionkey)
+	var i GetLiveByIDRow
 	err := row.Scan(
 		&i.LiveID,
 		&i.UserID,
@@ -74,35 +141,135 @@ func (q *Queries) GetLiveByID(ctx context.Context, liveID int32) (Life, error) {
 		&i.Description,
 		&i.StartTime,
 		&i.EndTime,
-		&i.StreamUrl,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.LiveAppName,
+		&i.StreamName,
+		&i.LiveSecret,
+		&i.StreamBroadcastUrl,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
+const getLiveWithStatusByID = `-- name: GetLiveWithStatusByID :one
+SELECT
+    l.live_id,
+    l.user_id,
+    l.title,
+    l.description,
+    l.start_time,
+    l.end_time,
+    l.scheduled_start_time,
+    l.scheduled_end_time,
+    l.live_app_name,
+    l.stream_name,
+pgp_sym_decrypt(live_secret,$2::text) as live_secret, 
+pgp_sym_decrypt(stream_broadcast_url,$2::text) as stream_broadcast_url,
+    l.created_at,
+    l.updated_at,
+    ls.status AS live_status
+FROM live l
+LEFT JOIN live_stats ls ON l.live_id = ls.live_id
+WHERE l.live_id = $1
+`
+
+type GetLiveWithStatusByIDParams struct {
+	LiveID        int32
+	Encryptionkey string
+}
+
+type GetLiveWithStatusByIDRow struct {
+	LiveID             int32
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         string
+	StreamBroadcastUrl string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	LiveStatus         pgtype.Text
+}
+
+func (q *Queries) GetLiveWithStatusByID(ctx context.Context, arg GetLiveWithStatusByIDParams) (GetLiveWithStatusByIDRow, error) {
+	row := q.db.QueryRow(ctx, getLiveWithStatusByID, arg.LiveID, arg.Encryptionkey)
+	var i GetLiveWithStatusByIDRow
+	err := row.Scan(
+		&i.LiveID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.StartTime,
+		&i.EndTime,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.LiveAppName,
+		&i.StreamName,
+		&i.LiveSecret,
+		&i.StreamBroadcastUrl,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LiveStatus,
+	)
+	return i, err
+}
+
 const getLiveWithUserDetails = `-- name: GetLiveWithUserDetails :one
-SELECT l.live_id, l.user_id, l.title, l.description, l.start_time, l.end_time, l.stream_url, l.created_at, u.first_name, u.last_name, u.email 
-FROM lives l 
+SELECT     l.live_id,
+    l.user_id,
+    l.title,
+    l.description,
+    l.start_time,
+    l.end_time,
+    l.scheduled_start_time,
+    l.scheduled_end_time,
+    l.live_app_name,
+    l.stream_name,
+pgp_sym_decrypt(live_secret,$2::text) as live_secret, 
+pgp_sym_decrypt(stream_broadcast_url,$2::text) as stream_broadcast_url,
+    l.created_at,
+    l.updated_at,
+     u.first_name, 
+     u.last_name, 
+     u.email 
+FROM live l 
 JOIN users u ON l.user_id = u.user_id 
 WHERE l.live_id = $1
 `
 
-type GetLiveWithUserDetailsRow struct {
-	LiveID      int32
-	UserID      pgtype.UUID
-	Title       string
-	Description pgtype.Text
-	StartTime   pgtype.Timestamp
-	EndTime     pgtype.Timestamp
-	StreamUrl   pgtype.Text
-	CreatedAt   pgtype.Timestamp
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	Email       string
+type GetLiveWithUserDetailsParams struct {
+	LiveID        int32
+	Encryptionkey string
 }
 
-func (q *Queries) GetLiveWithUserDetails(ctx context.Context, liveID int32) (GetLiveWithUserDetailsRow, error) {
-	row := q.db.QueryRow(ctx, getLiveWithUserDetails, liveID)
+type GetLiveWithUserDetailsRow struct {
+	LiveID             int32
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         string
+	StreamBroadcastUrl string
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	FirstName          pgtype.Text
+	LastName           pgtype.Text
+	Email              string
+}
+
+func (q *Queries) GetLiveWithUserDetails(ctx context.Context, arg GetLiveWithUserDetailsParams) (GetLiveWithUserDetailsRow, error) {
+	row := q.db.QueryRow(ctx, getLiveWithUserDetails, arg.LiveID, arg.Encryptionkey)
 	var i GetLiveWithUserDetailsRow
 	err := row.Scan(
 		&i.LiveID,
@@ -111,8 +278,14 @@ func (q *Queries) GetLiveWithUserDetails(ctx context.Context, liveID int32) (Get
 		&i.Description,
 		&i.StartTime,
 		&i.EndTime,
-		&i.StreamUrl,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.LiveAppName,
+		&i.StreamName,
+		&i.LiveSecret,
+		&i.StreamBroadcastUrl,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
@@ -121,18 +294,18 @@ func (q *Queries) GetLiveWithUserDetails(ctx context.Context, liveID int32) (Get
 }
 
 const getLivesByUserID = `-- name: GetLivesByUserID :many
-SELECT live_id, user_id, title, description, start_time, end_time, stream_url, created_at FROM lives WHERE user_id = $1 ORDER BY start_time DESC
+SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret, stream_broadcast_url, created_at, updated_at FROM live WHERE user_id = $1 ORDER BY start_time DESC
 `
 
-func (q *Queries) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]Life, error) {
+func (q *Queries) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]Live, error) {
 	rows, err := q.db.Query(ctx, getLivesByUserID, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Life
+	var items []Live
 	for rows.Next() {
-		var i Life
+		var i Live
 		if err := rows.Scan(
 			&i.LiveID,
 			&i.UserID,
@@ -140,8 +313,14 @@ func (q *Queries) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]L
 			&i.Description,
 			&i.StartTime,
 			&i.EndTime,
-			&i.StreamUrl,
+			&i.ScheduledStartTime,
+			&i.ScheduledEndTime,
+			&i.LiveAppName,
+			&i.StreamName,
+			&i.LiveSecret,
+			&i.StreamBroadcastUrl,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -154,18 +333,18 @@ func (q *Queries) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]L
 }
 
 const getOngoingLives = `-- name: GetOngoingLives :many
-SELECT live_id, user_id, title, description, start_time, end_time, stream_url, created_at FROM lives WHERE start_time <= CURRENT_TIMESTAMP AND (end_time IS NULL OR end_time > CURRENT_TIMESTAMP) ORDER BY start_time DESC
+SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret, stream_broadcast_url, created_at, updated_at FROM live WHERE start_time <= CURRENT_TIMESTAMP AND (end_time IS NULL OR end_time > CURRENT_TIMESTAMP) ORDER BY start_time DESC
 `
 
-func (q *Queries) GetOngoingLives(ctx context.Context) ([]Life, error) {
+func (q *Queries) GetOngoingLives(ctx context.Context) ([]Live, error) {
 	rows, err := q.db.Query(ctx, getOngoingLives)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Life
+	var items []Live
 	for rows.Next() {
-		var i Life
+		var i Live
 		if err := rows.Scan(
 			&i.LiveID,
 			&i.UserID,
@@ -173,8 +352,14 @@ func (q *Queries) GetOngoingLives(ctx context.Context) ([]Life, error) {
 			&i.Description,
 			&i.StartTime,
 			&i.EndTime,
-			&i.StreamUrl,
+			&i.ScheduledStartTime,
+			&i.ScheduledEndTime,
+			&i.LiveAppName,
+			&i.StreamName,
+			&i.LiveSecret,
+			&i.StreamBroadcastUrl,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -187,33 +372,57 @@ func (q *Queries) GetOngoingLives(ctx context.Context) ([]Life, error) {
 }
 
 const updateLive = `-- name: UpdateLive :one
-UPDATE lives 
-SET user_id = $2, title = $3, description = $4, start_time = $5, end_time = $6, stream_url = $7 
-WHERE live_id = $1 
-RETURNING live_id, user_id, title, description, start_time, end_time, stream_url, created_at
+UPDATE live
+SET
+  user_id = $1,
+  title = $2,
+  description = $3,
+  start_time = $4,
+  end_time = $5,
+  scheduled_start_time = $6,
+  scheduled_end_time = $7,
+  live_app_name = $8,
+  stream_name = $9,
+  live_secret = pgp_sym_encrypt($11, $12::text),
+  stream_broadcast_url= pgp_sym_encrypt($13, $12::text),
+  updated_at = current_timestamp
+WHERE live_id = $10
+RETURNING live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret, stream_broadcast_url, created_at, updated_at
 `
 
 type UpdateLiveParams struct {
-	LiveID      int32
-	UserID      pgtype.UUID
-	Title       string
-	Description pgtype.Text
-	StartTime   pgtype.Timestamp
-	EndTime     pgtype.Timestamp
-	StreamUrl   pgtype.Text
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveID             int32
+	LiveSecret         string
+	Encryptionkey      string
+	StreamBroadcastUrl string
 }
 
-func (q *Queries) UpdateLive(ctx context.Context, arg UpdateLiveParams) (Life, error) {
+func (q *Queries) UpdateLive(ctx context.Context, arg UpdateLiveParams) (Live, error) {
 	row := q.db.QueryRow(ctx, updateLive,
-		arg.LiveID,
 		arg.UserID,
 		arg.Title,
 		arg.Description,
 		arg.StartTime,
 		arg.EndTime,
-		arg.StreamUrl,
+		arg.ScheduledStartTime,
+		arg.ScheduledEndTime,
+		arg.LiveAppName,
+		arg.StreamName,
+		arg.LiveID,
+		arg.LiveSecret,
+		arg.Encryptionkey,
+		arg.StreamBroadcastUrl,
 	)
-	var i Life
+	var i Live
 	err := row.Scan(
 		&i.LiveID,
 		&i.UserID,
@@ -221,8 +430,14 @@ func (q *Queries) UpdateLive(ctx context.Context, arg UpdateLiveParams) (Life, e
 		&i.Description,
 		&i.StartTime,
 		&i.EndTime,
-		&i.StreamUrl,
+		&i.ScheduledStartTime,
+		&i.ScheduledEndTime,
+		&i.LiveAppName,
+		&i.StreamName,
+		&i.LiveSecret,
+		&i.StreamBroadcastUrl,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

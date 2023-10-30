@@ -12,23 +12,31 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (user_id, email, first_name, last_name, phone_number) 
-VALUES ($1, $2, $3, $4, $5) 
-RETURNING user_id, email, first_name, last_name, phone_number, created_at, updated_at
+INSERT INTO users (user_id, email, email_verified ,firebase_uid, display_name, photo_url, first_name, last_name, phone_number) 
+VALUES ($1, $2, $3, $4, $5 ,$6,$7,$8,$9) 
+RETURNING user_id, firebase_uid, email, email_verified, first_name, last_name, display_name, photo_url, phone_number, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	UserID      pgtype.UUID
-	Email       string
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	PhoneNumber pgtype.Text
+	UserID        pgtype.UUID
+	Email         string
+	EmailVerified pgtype.Bool
+	FirebaseUid   pgtype.Text
+	DisplayName   pgtype.Text
+	PhotoUrl      pgtype.Text
+	FirstName     pgtype.Text
+	LastName      pgtype.Text
+	PhoneNumber   pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser,
 		arg.UserID,
 		arg.Email,
+		arg.EmailVerified,
+		arg.FirebaseUid,
+		arg.DisplayName,
+		arg.PhotoUrl,
 		arg.FirstName,
 		arg.LastName,
 		arg.PhoneNumber,
@@ -36,9 +44,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	var i User
 	err := row.Scan(
 		&i.UserID,
+		&i.FirebaseUid,
 		&i.Email,
+		&i.EmailVerified,
 		&i.FirstName,
 		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
 		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -56,7 +68,7 @@ func (q *Queries) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT user_id, email, first_name, last_name, phone_number, created_at, updated_at FROM users WHERE email = $1
+SELECT user_id, firebase_uid, email, email_verified, first_name, last_name, display_name, photo_url, phone_number, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -64,9 +76,36 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	var i User
 	err := row.Scan(
 		&i.UserID,
+		&i.FirebaseUid,
 		&i.Email,
+		&i.EmailVerified,
 		&i.FirstName,
 		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
+		&i.PhoneNumber,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByFirebaseUID = `-- name: GetUserByFirebaseUID :one
+SELECT user_id, firebase_uid, email, email_verified, first_name, last_name, display_name, photo_url, phone_number, created_at, updated_at FROM users WHERE firebase_uid = $1
+`
+
+func (q *Queries) GetUserByFirebaseUID(ctx context.Context, firebaseUid pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByFirebaseUID, firebaseUid)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.FirebaseUid,
+		&i.Email,
+		&i.EmailVerified,
+		&i.FirstName,
+		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
 		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -75,7 +114,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT user_id, email, first_name, last_name, phone_number, created_at, updated_at FROM users WHERE user_id = $1
+SELECT user_id, firebase_uid, email, email_verified, first_name, last_name, display_name, photo_url, phone_number, created_at, updated_at FROM users WHERE user_id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, error) {
@@ -83,9 +122,13 @@ func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, er
 	var i User
 	err := row.Scan(
 		&i.UserID,
+		&i.FirebaseUid,
 		&i.Email,
+		&i.EmailVerified,
 		&i.FirstName,
 		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
 		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -95,9 +138,9 @@ func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, er
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users 
-SET email = $2, first_name = $3, last_name = $4, phone_number = $5, updated_at = current_timestamp 
+SET email = $2, first_name = $3, last_name = $4, display_name =$5,photo_url=$6, phone_number = $5, updated_at = current_timestamp 
 WHERE user_id = $1 
-RETURNING user_id, email, first_name, last_name, phone_number, created_at, updated_at
+RETURNING user_id, firebase_uid, email, email_verified, first_name, last_name, display_name, photo_url, phone_number, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -105,7 +148,8 @@ type UpdateUserParams struct {
 	Email       string
 	FirstName   pgtype.Text
 	LastName    pgtype.Text
-	PhoneNumber pgtype.Text
+	DisplayName pgtype.Text
+	PhotoUrl    pgtype.Text
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
@@ -114,14 +158,19 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		arg.Email,
 		arg.FirstName,
 		arg.LastName,
-		arg.PhoneNumber,
+		arg.DisplayName,
+		arg.PhotoUrl,
 	)
 	var i User
 	err := row.Scan(
 		&i.UserID,
+		&i.FirebaseUid,
 		&i.Email,
+		&i.EmailVerified,
 		&i.FirstName,
 		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
 		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,

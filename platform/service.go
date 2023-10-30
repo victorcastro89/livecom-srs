@@ -20,6 +20,7 @@ import (
 
 	"livecom/logger"
 	"livecom/pkg/api"
+	"livecom/pkg/handlers"
 
 	"github.com/ossrs/go-oryx-lib/errors"
 	ohttp "github.com/ossrs/go-oryx-lib/http"
@@ -31,7 +32,7 @@ import (
 // HttpService is a HTTP server for platform.
 type HttpService interface {
 	Close() error
-	Run(ctx context.Context, handlers api.Handlers) error
+	Run(ctx context.Context, handlers handlers.Handlers) error
 }
 
 func NewHTTPService() HttpService {
@@ -62,7 +63,7 @@ func (v *httpService) Close() error {
 
 
 
-func (v *httpService) Run(ctx context.Context,handlers api.Handlers) error {
+func (v *httpService) Run(ctx context.Context,handlers handlers.Handlers) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -183,7 +184,7 @@ func (v *httpService) Run(ctx context.Context,handlers api.Handlers) error {
 	return nil
 }
 
-func handleHTTPService(ctx context.Context, mux *http.ServeMux, handlers api.Handlers) error {
+func handleHTTPService(ctx context.Context, mux *http.ServeMux, handlers handlers.Handlers) error {
 
 	ohttp.Server = fmt.Sprintf("srs-stack/%v", version)
 	

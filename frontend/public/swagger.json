@@ -1,0 +1,519 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/users/{id}": {
+            "get": {
+                "description": "Retrieve user details by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get a user by ID",
+                "operationId": "get-user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "\u003caccess_token\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "application/json",
+                        "name": "Content-Type",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved user",
+                        "schema": {
+                            "$ref": "#/definitions/db.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    }
+                }
+            }
+        },
+        "/webapi/live": {
+            "post": {
+                "description": "Create a live entity with the given payload",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create a live entity",
+                "operationId": "create-live",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "\u003caccess_token\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "CreateLivePayload object",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repo.CreateLivePayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully created",
+                        "schema": {
+                            "$ref": "#/definitions/db.Live"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request\" '{\"error\": \"string\"}'",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    }
+                }
+            }
+        },
+        "/webapi/live/{id}": {
+            "get": {
+                "description": "Retrieve live details by ID",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get a live by ID",
+                "operationId": "get-live",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Live ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "\u003caccess_token\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "application/json",
+                        "name": "Content-Type",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved live",
+                        "schema": {
+                            "$ref": "#/definitions/db.Live"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    }
+                }
+            }
+        },
+        "/webapi/users": {
+            "post": {
+                "description": "Create a new user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create a user",
+                "operationId": "create-user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "\u003caccess_token\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "CreateUserPayload  object",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/repo.CreateUserPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully created",
+                        "schema": {
+                            "$ref": "#/definitions/db.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request\" '{\"error\": \"string\"}'",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    }
+                }
+            }
+        },
+        "/webapi/verify": {
+            "post": {
+                "description": "Method to SRS callback to verify if a live can be streamed, update status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Verify if a live can be streamed",
+                "operationId": "srs-verify",
+                "parameters": [
+                    {
+                        "description": "Verify object",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Authorized",
+                        "schema": {
+                            "$ref": "#/definitions/repo.VerifyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request\" '{\"error\": \"string\"}'",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/repo.RequestError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "db.Live": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "$ref": "#/definitions/pgtype.Timestamptz"
+                },
+                "description": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "endTime": {
+                    "$ref": "#/definitions/pgtype.Timestamp"
+                },
+                "liveAppName": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "liveID": {
+                    "type": "integer"
+                },
+                "liveSecret": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "scheduledEndTime": {
+                    "$ref": "#/definitions/pgtype.Timestamp"
+                },
+                "scheduledStartTime": {
+                    "$ref": "#/definitions/pgtype.Timestamp"
+                },
+                "startTime": {
+                    "$ref": "#/definitions/pgtype.Timestamp"
+                },
+                "streamBroadcastUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "streamName": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "$ref": "#/definitions/pgtype.Timestamptz"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "db.User": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "$ref": "#/definitions/pgtype.Timestamptz"
+                },
+                "displayName": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "emailVerified": {
+                    "$ref": "#/definitions/pgtype.Bool"
+                },
+                "firebaseUid": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "firstName": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "lastName": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "phoneNumber": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "photoUrl": {
+                    "$ref": "#/definitions/pgtype.Text"
+                },
+                "updatedAt": {
+                    "$ref": "#/definitions/pgtype.Timestamptz"
+                },
+                "userID": {
+                    "type": "string"
+                }
+            }
+        },
+        "pgtype.Bool": {
+            "type": "object",
+            "properties": {
+                "bool": {
+                    "type": "boolean"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "pgtype.InfinityModifier": {
+            "type": "integer",
+            "enum": [
+                1,
+                0,
+                -1
+            ],
+            "x-enum-varnames": [
+                "Infinity",
+                "Finite",
+                "NegativeInfinity"
+            ]
+        },
+        "pgtype.Text": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "pgtype.Timestamp": {
+            "type": "object",
+            "properties": {
+                "infinityModifier": {
+                    "$ref": "#/definitions/pgtype.InfinityModifier"
+                },
+                "time": {
+                    "description": "Time zone will be ignored when encoding to PostgreSQL.",
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "pgtype.Timestamptz": {
+            "type": "object",
+            "properties": {
+                "infinityModifier": {
+                    "$ref": "#/definitions/pgtype.InfinityModifier"
+                },
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "repo.CreateLivePayload": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "live_app_name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                },
+                "scheduled_end_time": {
+                    "type": "string"
+                },
+                "scheduled_start_time": {
+                    "type": "string"
+                },
+                "stream_name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
+        "repo.CreateUserPayload": {
+            "type": "object",
+            "properties": {
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 25,
+                    "minLength": 3
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 25,
+                    "minLength": 3
+                },
+                "phone_number": {
+                    "description": "Assuming min 9 and max 15 digits for global phone numbers",
+                    "type": "string",
+                    "maxLength": 15,
+                    "minLength": 9
+                },
+                "photo_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "repo.RequestError": {
+            "type": "object",
+            "properties": {
+                "err": {
+                    "type": "string"
+                }
+            }
+        },
+        "repo.VerifyResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

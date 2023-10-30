@@ -14,6 +14,7 @@ import { Outlet } from "react-router-dom";
 import { FirebaseOptions, initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import theme from './theme/theme';
+import { ApidDocs } from './pages/ApiDocs';
 // Configure Firebase.
 const config:FirebaseOptions = {
   apiKey: 'AIzaSyB2TjivCm9ZmtDJVH3Lr9qYcxL3zoKsoa0',
@@ -39,7 +40,10 @@ function Layout() {
   );
 }
 
-const router = createBrowserRouter([
+const router = createBrowserRouter([   {
+  path: '/apidoc',
+  element: <ApidDocs />,
+},
   {
     element: <Layout />,
     children: [
@@ -47,6 +51,7 @@ const router = createBrowserRouter([
         path: '/',
         element: <Login />,
       },
+   
       {
         path: '/signedIn',
         element: <SignedIn />,

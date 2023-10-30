@@ -1,0 +1,9 @@
+[build]
+  # ... other configurations ...
+
+[watch]
+  # Exclude the directory from being watched
+  exclude_dir = [
+    "./pgdata","./redisdata"
+  ]
+

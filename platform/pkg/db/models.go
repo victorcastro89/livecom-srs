@@ -8,23 +8,58 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Life struct {
-	LiveID      int32
-	UserID      pgtype.UUID
-	Title       string
-	Description pgtype.Text
-	StartTime   pgtype.Timestamp
-	EndTime     pgtype.Timestamp
-	StreamUrl   pgtype.Text
-	CreatedAt   pgtype.Timestamp
+type Live struct {
+	LiveID             int32
+	UserID             pgtype.UUID
+	Title              string
+	Description        pgtype.Text
+	StartTime          pgtype.Timestamp
+	EndTime            pgtype.Timestamp
+	ScheduledStartTime pgtype.Timestamp
+	ScheduledEndTime   pgtype.Timestamp
+	LiveAppName        pgtype.Text
+	StreamName         pgtype.Text
+	LiveSecret         []byte
+	StreamBroadcastUrl []byte
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+}
+
+type LiveLog struct {
+	LiveLogID      int32
+	LiveID         pgtype.Int4
+	Action         pgtype.Text
+	ClientID       pgtype.Text
+	StreamID       pgtype.Text
+	ServerID       pgtype.Text
+	ServiceID      pgtype.Text
+	Ip             pgtype.Text
+	Vhost          pgtype.Text
+	App            pgtype.Text
+	Tcurl          pgtype.Text
+	StreamUrlParam pgtype.Text
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
+type LiveStat struct {
+	LiveStatID int32
+	LiveID     pgtype.Int4
+	Status     pgtype.Text
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type User struct {
-	UserID      pgtype.UUID
-	Email       string
-	FirstName   pgtype.Text
-	LastName    pgtype.Text
-	PhoneNumber pgtype.Text
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	UserID        pgtype.UUID
+	FirebaseUid   pgtype.Text
+	Email         string
+	EmailVerified pgtype.Bool
+	FirstName     pgtype.Text
+	LastName      pgtype.Text
+	DisplayName   pgtype.Text
+	PhotoUrl      pgtype.Text
+	PhoneNumber   pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
