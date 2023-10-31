@@ -6,21 +6,39 @@ import (
 	"encoding/base64"
 	"errors"
 	"livecom/logger"
-	"livecom/pkg/config"
+
+	"livecom/pkg/crypto"
 	"livecom/pkg/db"
 	"livecom/pkg/repo"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
-func (s *Service) CreateLive(ctx context.Context, usr db.User, arg repo.CreateLivePayload) (db.CreateLiveRow, error) {
+var (
+	ErrNotAllowed = errors.New("Not allow to acess this resource")
+)
+func (s *Service) CreateLive(ctx context.Context, usr db.User, arg repo.CreateLivePayload) (repo.LiveDecrypted, error) {
 	randId,err := generateRandomID(20);
+	
 	if err != nil {
-		return db.CreateLiveRow{}, err
+		return repo.LiveDecrypted{}, err
 	}
-
+	hashedLiveSecret := crypto.HashMD5(randId);
+	if err != nil {
+		return repo.LiveDecrypted{}, err
+	}
+	encryptedLiveSecret,err := crypto.EncryptString(randId)
+	if err != nil {
+		return repo.LiveDecrypted{}, err
+	}
+	BroadCastUrl := arg.LiveAppName + "/" + arg.StreamName + "?secret=" + randId;
+	encryptedBroadcastUrl,err := crypto.EncryptString(BroadCastUrl)
+	if err != nil {
+		return repo.LiveDecrypted{}, err
+	}
 	live :=db.CreateLiveParams{
 	
 	}
+	
 	live.UserID = usr.UserID
 	live.Title = arg.Title
 	live.Description.Scan(*arg.Description)
@@ -28,11 +46,59 @@ func (s *Service) CreateLive(ctx context.Context, usr db.User, arg repo.CreateLi
 	live.ScheduledEndTime.Scan(*arg.ScheduledEndTime)
 	live.LiveAppName.Scan(arg.LiveAppName)
 	live.StreamName.Scan(arg.StreamName)
-	live.LiveSecret = randId
-	live.Encryptionkey= config.Cfg.EncryptionKey
-	live.StreamBroadcastUrl = arg.LiveAppName + "/" + arg.StreamName + "/" + randId
+	live.LiveSecretHash.Scan(hashedLiveSecret)
+	live.LiveSecretEncrypted.Scan(encryptedLiveSecret)
+	live.StreamBroadcastUrlEncrypted.Scan(encryptedBroadcastUrl)
 	logger.Tf(ctx, "live %v", live)
-	return s.db.CreateLive(ctx, live)
+	createdLive,err:= s.db.CreateLive(ctx, live)
+	if err != nil {
+		return repo.LiveDecrypted{}, err
+	}
+
+	decryptedSecret,err:=crypto.DecryptString(live.LiveSecretEncrypted.String);
+	if err != nil {
+		return  repo.LiveDecrypted{}, err
+	}
+	decryptedStreamName,err:=crypto.DecryptString(live.StreamBroadcastUrlEncrypted.String);
+	if err != nil {
+		return  repo.LiveDecrypted{}, err
+	}
+
+	return repo.LiveDecrypted{
+		Live: createdLive,
+		Decrypted_secret: decryptedSecret,
+		Decrypted_stream_name: decryptedStreamName,
+	}, nil
+	
+}
+
+func (s *Service) GetLiveByEncryptedSecretStreamAppName(ctx context.Context, secretHash string, streamName string, appName string) (repo.LiveWithDecryptedSecretAndStreamName, error) {
+	var param db.GetLiveBySecretHashAppAndStreamParams
+	
+	param.StreamName.Scan(streamName);
+	param.LiveSecretHash.Scan(secretHash);
+	param.LiveAppName.Scan(appName);
+	logger.Tf(ctx, "GetLiveBySecretHashAppAndStream %v", param)
+	live ,err:=s.db.GetLiveBySecretHashAppAndStream(ctx, param)
+	logger.Tf(ctx, "Live %v", live)
+
+	if err != nil {
+		logger.Tf(ctx, "Err %s", err.Error())
+		return repo.LiveWithDecryptedSecretAndStreamName{}, ErrNotAllowed
+	}
+	decryptedSecret,err:=crypto.DecryptString(live.LiveSecretEncrypted.String);
+	if err != nil {
+		return repo.LiveWithDecryptedSecretAndStreamName{}, err
+	}
+	decryptedStreamName,err:=crypto.DecryptString(live.StreamBroadcastUrlEncrypted.String);
+	if err != nil {
+		return repo.LiveWithDecryptedSecretAndStreamName{}, err
+	}
+	return repo.LiveWithDecryptedSecretAndStreamName{
+		GetLiveBySecretHashAppAndStreamRow: live,
+		Decrypted_secret:decryptedSecret ,
+		Decrypted_stream_name: decryptedStreamName,
+	},nil
 }
 
 func (s *Service) DeleteLive(ctx context.Context, liveID int32) error {
@@ -40,17 +106,14 @@ func (s *Service) DeleteLive(ctx context.Context, liveID int32) error {
 }
 
 func (s *Service) GetLiveByID(ctx context.Context, user db.User, liveId int32) (db.GetLiveByIDRow, error) {
-	args:=db.GetLiveByIDParams{
-		LiveID: liveId,
-		Encryptionkey:config.Cfg.EncryptionKey,
-	}
-	live,err:= s.db.GetLiveByID(ctx, args)
+
+	live,err:= s.db.GetLiveByID(ctx, liveId )
 	if err != nil {
 		return db.GetLiveByIDRow{}, err
 	}
 
 	if(user.UserID != live.UserID ){
-	return  db.GetLiveByIDRow{}, errors.New("Not allow to acess this resource")
+	return  db.GetLiveByIDRow{}, ErrNotAllowed
 	}else {
 		return live, nil
 	}
@@ -59,12 +122,12 @@ func (s *Service) GetLiveByID(ctx context.Context, user db.User, liveId int32) (
 
 }
 
-func (s *Service) GetLiveWithStatusByID(ctx context.Context, arg db.GetLiveWithStatusByIDParams) (db.GetLiveWithStatusByIDRow, error) {
-	return s.db.GetLiveWithStatusByID(ctx, arg)
+func (s *Service) GetLiveWithStatusByID(ctx context.Context,  liveId int32) (db.GetLiveWithStatusByIDRow, error) {
+	return s.db.GetLiveWithStatusByID(ctx, liveId)
 }
 
-func (s *Service) GetLiveWithUserDetails(ctx context.Context, arg db.GetLiveWithUserDetailsParams) (db.GetLiveWithUserDetailsRow, error) {
-	return s.db.GetLiveWithUserDetails(ctx, arg)
+func (s *Service) GetLiveWithUserDetails(ctx context.Context,  liveId int32) (db.GetLiveWithUserDetailsRow, error) {
+	return s.db.GetLiveWithUserDetails(ctx, liveId)
 }
 
 func (s *Service) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]db.Live, error) {

@@ -11,8 +11,9 @@ CREATE TABLE IF NOT EXISTS live (
     scheduled_end_time TIMESTAMP,
     live_app_name VARCHAR(255),-- Name of the livetream app
     stream_name VARCHAR(255), -- Name of the livetream
-    live_secret bytea,
-    stream_broadcast_url bytea, -- URL to transmit the livetream
+    live_secret_encrypted TEXT,
+    live_secret_hash TEXT,
+    stream_broadcast_url_encrypted TEXT, -- URL to transmit the livetream
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT current_timestamp
 );
@@ -25,3 +26,6 @@ CREATE INDEX idx_live_start_end_time ON live(start_time, end_time);
 -- Index on title (using a text pattern ops for efficient text searching)
 CREATE INDEX idx_live_title ON live(title text_pattern_ops);
 
+CREATE INDEX idx_live_secret_hash ON live(live_secret_hash);
+
+CREATE INDEX idx_live_stream_name ON live(stream_name);

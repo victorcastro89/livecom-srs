@@ -17,6 +17,8 @@ func SetupWebApiRoutes(ctx context.Context, handlers handlers.Handlers ,mux *htt
 	router.Use(authMiddleware(handlers))
 
 	router.POST("/live", handlers.CreateLiveHandler)
+	router.GET("/live/:id", handlers.GetLiveHandler)
+
     router.GET("/users/:id", handlers.GetUser)
 	router.POST("/users", handlers.CreateUser)
     router.GET("/hello", func(c *gin.Context) {
@@ -80,6 +82,7 @@ func authMiddleware(handlers handlers.Handlers) gin.HandlerFunc {
 		
 		// Store the authenticated user in the gin context
 		c.Set("authenticated_user", user)
+
 		c.Next()
 	}
 }

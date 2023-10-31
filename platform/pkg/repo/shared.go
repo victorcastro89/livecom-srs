@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"livecom/pkg/db"
 	"time"
 )
 type CreateUserPayload struct {
@@ -26,6 +27,33 @@ type RequestError struct {
 }
 
 type VerifyResponse struct{
-	Code   int
-	Data   *string
+	Code   int `json:"code"`
+	Data   *string `json:"data"`
+}
+
+type BroadCastVerify struct {
+	ServerID  *string `json:"server_id,omitempty"`
+	ServiceID *string `json:"service_id,omitempty"`
+	Action    string `json:"action"  binding:"required"`
+	ClientID  *string `json:"client_id,omitempty"`
+	IP        *string `json:"ip,omitempty"`
+	Vhost     *string `json:"vhost,omitempty"`
+	App       string `json:"app, binding:"required"`
+	TcURL     *string `json:"tcUrl,omitempty"`
+	Stream    string `json:"stream"  binding:"required"`
+	Param     string `json:"param"  binding:"required"`
+	StreamURL *string `json:"stream_url,omitempty"`
+	StreamID  *string `json:"stream_id,omitempty"`
+}
+
+type LiveWithDecryptedSecretAndStreamName struct {
+	db.GetLiveBySecretHashAppAndStreamRow
+	Decrypted_secret string
+	Decrypted_stream_name string
+
+}
+type LiveDecrypted struct {
+	db.Live
+	Decrypted_secret string
+	Decrypted_stream_name string
 }

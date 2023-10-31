@@ -9,20 +9,21 @@ import (
 )
 
 type Live struct {
-	LiveID             int32
-	UserID             pgtype.UUID
-	Title              string
-	Description        pgtype.Text
-	StartTime          pgtype.Timestamp
-	EndTime            pgtype.Timestamp
-	ScheduledStartTime pgtype.Timestamp
-	ScheduledEndTime   pgtype.Timestamp
-	LiveAppName        pgtype.Text
-	StreamName         pgtype.Text
-	LiveSecret         []byte
-	StreamBroadcastUrl []byte
-	CreatedAt          pgtype.Timestamptz
-	UpdatedAt          pgtype.Timestamptz
+	LiveID                      int32
+	UserID                      pgtype.UUID
+	Title                       string
+	Description                 pgtype.Text
+	StartTime                   pgtype.Timestamp
+	EndTime                     pgtype.Timestamp
+	ScheduledStartTime          pgtype.Timestamp
+	ScheduledEndTime            pgtype.Timestamp
+	LiveAppName                 pgtype.Text
+	StreamName                  pgtype.Text
+	LiveSecretEncrypted         pgtype.Text
+	LiveSecretHash              pgtype.Text
+	StreamBroadcastUrlEncrypted pgtype.Text
+	CreatedAt                   pgtype.Timestamptz
+	UpdatedAt                   pgtype.Timestamptz
 }
 
 type LiveLog struct {

@@ -2,14 +2,17 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"livecom/logger"
-	"livecom/pkg/db"
+	"livecom/pkg/crypto"
 	"livecom/pkg/repo"
+	"livecom/pkg/services"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,21 +30,14 @@ import (
 // @Failure 500 {object} repo.RequestError "Internal Server Error"
 // @Router /webapi/live [post]
 func (h *Handlers) CreateLiveHandler(c *gin.Context) {
-	val , exists := c.Get("authenticated_user")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, repo.RequestError{Err: "Error getting Gin context authenticated_user from handlers.CreateLiveHandler"}) 
-        return
-        }
-	user, ok := val.(*db.User)
-		if !ok {
-			// Handle error: Unexpected type for user
-			c.JSON(http.StatusInternalServerError, repo.RequestError{Err:"Failed to process authenticated user"})
-			return
-		}
 
+	user:=h.GetUserFromContext(c)
+	
+		
 	// Just checkin User ID 
 	// TO DO Refactory with user access	
-	if(user.UserID.Valid){	
+	if(user != nil){
+		
     // Bind JSON payload to CreateUserPayload struct
 	var livePayload repo.CreateLivePayload
 	if err := c.ShouldBindJSON(&livePayload); err != nil {
@@ -83,7 +79,15 @@ func (h *Handlers) CreateLiveHandler(c *gin.Context) {
 			return
 		}
 
-		h.Service.GetLiveByID(c, *user, int32(i))
+		live,err:=h.Service.GetLiveByID(c, *user, int32(i))
+		if err == services.ErrNotAllowed {
+			c.JSON(http.StatusForbidden, repo.RequestError{Err:services.ErrNotAllowed.Error()})
+			return 
+		}else if err != nil {
+			c.JSON(http.StatusForbidden, repo.RequestError{Err: err.Error()})
+			return 
+		}
+		c.JSON(http.StatusOK, live)
 		return 
 
 	}
@@ -136,10 +140,13 @@ func (h *Handlers) CreateLiveHandler(c *gin.Context) {
 // @Failure 500 {object} repo.RequestError "Internal Server Error"
 // @Router /webapi/verify [post]
 func (h *Handlers) Verify(c *gin.Context) {
+	fmt.Println("/webapi/verify")
+
+
  		//Read the request body
 		 bodyBytes, err := ioutil.ReadAll(c.Request.Body)
 		 if err != nil {
-			 log.Printf("Error reading body: %v", err)
+			 log.Printf("Error reading body: %#v\n", err)
 			 c.AbortWithStatus(http.StatusInternalServerError)
 			 return
 		 }
@@ -151,9 +158,62 @@ func (h *Handlers) Verify(c *gin.Context) {
 		 c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		c.Header("Content-Type", "application/json")
 	
+		var verifyPayload repo.BroadCastVerify
+		if err := c.ShouldBindJSON(&verifyPayload); err != nil {
+			c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
+			return
+		}	
+	
+		if(verifyPayload.Action == "on_publish"){
+			secret, err :=parseSecretParam(verifyPayload.Param)
+			if err != nil{
+				c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
+				return
+			}
+			hashedSecret:= crypto.HashMD5(secret)
+			logger.T(c,"Searching for a live with %s, %s",hashedSecret,verifyPayload.Stream)
+			live, err:=h.Service.GetLiveByEncryptedSecretStreamAppName(c, hashedSecret, verifyPayload.Stream, verifyPayload.App)
+			if err == services.ErrNotAllowed {
+				message := new(string)
+				*message = services.ErrNotAllowed.Error()
+				logger.T(c,"Did not found Live with this stream %v",live)
+				c.JSON(http.StatusForbidden, repo.VerifyResponse{
+					Code:  http.StatusForbidden,
+					Data:   message,
+				
+				})
+				return
+			}else if err != nil {
+				message := new(string)
+				*message = err.Error()
+				c.JSON(http.StatusInternalServerError, repo.VerifyResponse{
+					Code:  http.StatusForbidden,
+					Data:   message,
+				
+				})
+				return
+			}
+
+			
+			logger.T(c,"live %v",live)
+		}
 		c.JSON(200, repo.VerifyResponse{
 			Code:   0,
 			Data:   nil,
 		
 		})
+}
+//{"server_id":"vid-y8d385z","service_id":"366z1g23","action":"on_publish","client_id":"3045051l","ip":"172.22.0.1","vhost":"__defaultVhost__","app":"live","tcUrl":"rtmp://localhost/live","stream":"livestream","param":"?secret=5d074dc","stream_url":"/live/livestream","stream_id":"vid-012e574"}
+//{"server_id":"vid-y8d385z","service_id":"366z1g23","action":"on_unpublish","client_id":"3045051l","ip":"172.22.0.1","vhost":"__defaultVhost__","app":"live","tcUrl":"rtmp://localhost/live","stream":"livestream","param":"?secret=5d074dc","stream_url":"/live/livestream","stream_id":"vid-012e574"}
+
+func parseSecretParam(input string) (string,error) {
+	index := strings.Index(input, "?secret=")
+
+	if index != -1 {
+		// Extract the substring after "?secret="
+		secretValue := input[index+len("?secret="):]
+		return secretValue,nil
+	} else {
+		return "", errors.New("Could not parse secret value")
+	}
 }

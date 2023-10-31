@@ -1,5 +1,5 @@
 -- name: CreateLive :one
-INSERT INTO live (user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret, stream_broadcast_url)
+INSERT INTO live (user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, live_secret_hash,   live_secret_encrypted, stream_broadcast_url_encrypted)
 VALUES (
   @user_id,
   @title,
@@ -10,14 +10,19 @@ VALUES (
   @scheduled_end_time,
   @live_app_name,
   @stream_name,
-  pgp_sym_encrypt(@live_secret, @encryptionKey::text),
-  pgp_sym_encrypt(@stream_broadcast_url, @encryptionKey::text)
+  @live_secret_hash,
+  @live_secret_encrypted,
+  @stream_broadcast_url_encrypted
 )
-RETURNING live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, pgp_sym_decrypt(live_secret,@encryptionKey::text) as live_secret, pgp_sym_decrypt(stream_broadcast_url,@encryptionKey::text) as stream_broadcast_url, created_at;
+RETURNING *;
+-- name: GetLiveBySecretHashAppAndStream :one
+SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name,live_secret_hash, live_secret_encrypted, stream_broadcast_url_encrypted, created_at
+FROM live
+WHERE stream_name = @stream_name AND live_secret_hash =  @live_secret_hash AND live_app_name =  @live_app_name;
 
 
 -- name: GetLiveByID :one
-SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name, pgp_sym_decrypt(live_secret,@encryptionKey::text) as live_secret, pgp_sym_decrypt(stream_broadcast_url,@encryptionKey::text) as stream_broadcast_url, created_at
+SELECT live_id, user_id, title, description, start_time, end_time, scheduled_start_time, scheduled_end_time, live_app_name, stream_name,live_secret_hash,live_secret_encrypted, stream_broadcast_url_encrypted,  created_at
 FROM live
 WHERE live_id = $1;
 
@@ -33,8 +38,9 @@ SELECT
     l.scheduled_end_time,
     l.live_app_name,
     l.stream_name,
-pgp_sym_decrypt(live_secret,@encryptionKey::text) as live_secret, 
-pgp_sym_decrypt(stream_broadcast_url,@encryptionKey::text) as stream_broadcast_url,
+    l.live_secret_hash,
+    l.live_secret_encrypted, 
+    l.stream_broadcast_url_encrypted, 
     l.created_at,
     l.updated_at,
     ls.status AS live_status
@@ -59,8 +65,9 @@ SELECT     l.live_id,
     l.scheduled_end_time,
     l.live_app_name,
     l.stream_name,
-pgp_sym_decrypt(live_secret,@encryptionKey::text) as live_secret, 
-pgp_sym_decrypt(stream_broadcast_url,@encryptionKey::text) as stream_broadcast_url,
+    l.live_secret_hash,
+    l.live_secret_encrypted, 
+    l.stream_broadcast_url_encrypted, 
     l.created_at,
     l.updated_at,
      u.first_name, 
@@ -83,10 +90,11 @@ SET
   scheduled_end_time = $7,
   live_app_name = $8,
   stream_name = $9,
-  live_secret = pgp_sym_encrypt(@live_secret, @encryptionKey::text),
-  stream_broadcast_url= pgp_sym_encrypt(@stream_broadcast_url, @encryptionKey::text),
+  live_secret_hash = $10,
+  live_secret_encrypted = $11,
+  stream_broadcast_url_encrypted = $12,
   updated_at = current_timestamp
-WHERE live_id = $10
+WHERE live_id = $13
 RETURNING *;
 
 -- name: DeleteLive :exec
