@@ -31,7 +31,7 @@ function Layout() {
       theme={theme}
 
  
-      disableNestedContext>
+     >
       <AuthListener />
       <Navbar />
       <Outlet></Outlet>

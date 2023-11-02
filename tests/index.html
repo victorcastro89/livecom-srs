@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video with Blue Ticker, QR Code, and Product</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script  type="text/javascript" src="./srs.sdk.js"></script>
+    <style>
+        /* Styles for the canvas container */
+        #canvasContainer {
+            position: relative;
+            width: 640px;
+            height: 480px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Styles for the product box */
+        #productBox {
+            position: absolute;
+            z-index: 2; /* ensure productBox is above canvas */
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #productImage {
+            width:60%;
+            border-radius: 5px;
+        }
+
+        #productBox h2 {
+            margin-top: 10px;
+            font-size: 20px;
+        }
+
+        #productBox p {
+            color: gray;
+        }
+
+        #productBox h3 {
+            color: #333;
+        }
+
+        #productBox button {
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+        .modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 3; 
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    width: 80%;
+    max-width: 800px;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+}
+
+    </style>
+
+    <!-- Including p5.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="form-inline">
+            URL:
+            <input type="text" id="txt_url" class="input-xxlarge" value="">
+            <button class="btn btn-primary" id="btn_publish">开始推流</button>
+        </div>
+    
+        <label></label>
+        <video id="rtc_media_player" width="320" autoplay muted></video>
+    
+        <label></label>
+        SessionID: <span id='sessionid'></span>
+    
+        <label></label>
+        Audio: <span id='acodecs'></span><br/>
+        Video: <span id='vcodecs'></span>
+    
+        <label></label>
+        Simulator: <a href='#' id='simulator-drop'>Drop</a>
+    
+    </div>
+    <div id="purchaseModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <!-- <iframe src="https://www.lvstore.com.br/produtos/body-yasmin-preto/" width="100%" height="500px"></iframe> -->
+        </div>
+    </div>
+    
+    <div id="canvasContainer">
+        <!-- P5.js will append the canvas here -->
+            <!-- Product Box -->
+    <div id="productBox">
+        <img id="productImage" src="./unsplash.jpg" alt="Product">
+        <h2>Product Title</h2>
+        <p>Product description goes here.</p>
+        <h3>$99.99</h3>
+        <button onclick="redirectToPurchase()">Buy Now</button>
+    </div>
+    </div>
+
+
+
+    <button onclick="startVideo()">Play</button>
+
+    <script>
+        let video;
+        let textX = 0;
+        let qrImg;
+        let xPos, yPos;
+        let xSpeed, ySpeed;
+
+        function preload() {
+            qrImg = loadImage('https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://example.com');
+            video = createVideo('./preview.mp4');
+            video.attribute('autoplay', true);
+            video.hide(); // Hide the default video DOM element
+        }
+
+        function setup() {
+            const canvas = createCanvas(640, 480);
+            canvas.parent('canvasContainer'); // Appending the canvas to the container
+            canvas.id("myplayer");
+            video.loop();
+
+            xPos = width / 2;
+            yPos = height / 2;
+            xSpeed = 4;
+            ySpeed = -5;
+        }
+
+        function draw() {
+            background(220);
+
+            // Draw the video
+            image(video, 0, 0, width, height);
+
+            // Draw the blue ticker
+            fill('blue');
+            rect(0, 0, width, 30);  // <-- Adjusted this line
+
+            // Draw the text
+            fill('white');
+            textSize(14);
+            text('Olá mundo doido', textX, 20);  // <-- Adjusted y-coordinate for the text to appear centered on the ticker
+
+
+            // Move the text
+            textX += 2;
+            if (textX > width) {
+                textX = -textWidth('Olá mundo doido');
+            }
+
+            // Draw the QR code
+            if (qrImg) {
+                image(qrImg, xPos - qrImg.width / 2, yPos - qrImg.height / 2);
+            }
+
+            // Move the QR code
+            xPos += xSpeed;
+            yPos += ySpeed;
+            if (xPos > width - qrImg.width / 2 || xPos < qrImg.width / 2) {
+                xSpeed = -xSpeed;
+            }
+            if (yPos > height - qrImg.height / 2 || yPos < qrImg.height / 2) {
+                ySpeed = -ySpeed;
+            }
+        }
+
+        function startVideo() {
+            video.play();
+        }
+        function redirectToPurchase() {
+    const modal = document.getElementById('purchaseModal');
+    modal.style.display = "block";
+
+    const closeBtn = document.querySelector('.close-btn');
+    closeBtn.onclick = function() {
+        modal.style.display = "none";
+    }
+
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+}
+// let peerConnection;
+// // Step 1: Capture the webcam feed
+// navigator.mediaDevices.getUserMedia({ video: true })
+//   .then(stream => {
+//     // Step 2: Set up the WebRTC connection
+//     peerConnection = new RTCPeerConnection();
+
+//     // Add the webcam stream to the connection
+//     stream.getTracks().forEach(track => {
+//       peerConnection.addTrack(track, stream);
+//     });
+
+//     // Step 3: Create an offer
+//     return peerConnection.createOffer();
+//   })
+//   .then(offer => {
+//     // Set the local description with the offer
+//     return peerConnection.setLocalDescription(offer);
+//   })
+//   .then(() => {
+//     console.log(JSON.stringify({
+//         sdp: peerConnection.localDescription.sdp,
+//         type: peerConnection.localDescription.type,
+//       }));
+//     // Step 4: Send the offer to the server
+//     return fetch('http://localhost:1985/rtc/v1/whip/?app=live&stream=livestream', {
+//       method: 'POST',
+//       body: JSON.stringify({
+//         sdp: peerConnection.localDescription.sdp,
+//         type: peerConnection.localDescription.type,
+//       }),
+//       headers: {
+//         'Content-Type': 'application/json'
+//       }
+//     });
+//   })
+//   .then(response => {
+//     // Step 5: Handle the server's answer
+//     console.log(response);
+//     if (response.ok) {
+//       return response.json();
+//     } else {
+//       throw new Error('Failed to publish the stream');
+//     }
+//   })
+//   .then(answer => {
+//     // Set the remote description with the answer from the server
+//     return peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+//   })
+//   .catch(error => {
+//     console.error('Error publishing the stream:', error);
+//   });
+
+    $(function(){
+    var sdk = null; // Global handler to do cleanup when republishing.
+    var startPublish = async function() {
+        $('#rtc_media_player').show();
+
+        // Close PC when user replay.
+        if (sdk) {
+            sdk.close();
+        }
+        const canvas = document.getElementById('myplayer');
+        const stream = canvas.captureStream(60); // 30 FPS
+
+        media = await navigator.mediaDevices.getUserMedia( {
+        audio: true,
+        video: {
+            width: {ideal: 320, max: 576}
+        }
+    });
+
+    sdk = new SrsRtcPublisherAsync(stream);
+        // User should set the stream when publish is done, @see https://webrtc.org/getting-started/media-devices
+        // However SRS SDK provides a consist API like https://webrtc.org/getting-started/remote-streams
+        $('#rtc_media_player').prop('srcObject', sdk.stream);
+        // Optional callback, SDK will add track to stream.
+        // sdk.ontrack = function (event) { console.log('Got track', event); sdk.stream.addTrack(event.track); };
+
+        // https://developer.mozilla.org/en-US/docs/Web/Media/Formats/WebRTC_codecs#getting_the_supported_codecs
+        sdk.pc.onicegatheringstatechange = function (event) {
+            if (sdk.pc.iceGatheringState === "complete") {
+                $('#acodecs').html(SrsRtcFormatSenders(sdk.pc.getSenders(), "audio"));
+                $('#vcodecs').html(SrsRtcFormatSenders(sdk.pc.getSenders(), "video"));
+            }
+        };
+
+        // For example: webrtc://r.ossrs.net/live/livestream
+        var url = $("#txt_url").val();
+        sdk.publish(url).then(function(session){
+            $('#sessionid').html(session.sessionid);
+            $('#simulator-drop').attr('href', session.simulator + '?drop=1&username=' + session.sessionid);
+        }).catch(function (reason) {
+            // Throw by sdk.
+            if (reason instanceof SrsError) {
+                if (reason.name === 'HttpsRequiredError') {
+                    alert(`WebRTC推流必须是HTTPS或者localhost：${reason.name} ${reason.message}`);
+                } else {
+                    alert(`${reason.name} ${reason.message}`);
+                }
+            }
+            // See https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#exceptions
+            if (reason instanceof DOMException) {
+                if (reason.name === 'NotFoundError') {
+                    alert(`找不到麦克风和摄像头设备：getUserMedia ${reason.name} ${reason.message}`);
+                } else if (reason.name === 'NotAllowedError') {
+                    alert(`你禁止了网页访问摄像头和麦克风：getUserMedia ${reason.name} ${reason.message}`);
+                } else if (['AbortError', 'NotAllowedError', 'NotFoundError', 'NotReadableError', 'OverconstrainedError', 'SecurityError', 'TypeError'].includes(reason.name)) {
+                    alert(`getUserMedia ${reason.name} ${reason.message}`);
+                }
+            }
+
+            sdk.close();
+            $('#rtc_media_player').hide();
+            console.error(reason);
+        });
+    };
+
+    $('#rtc_media_player').hide();
+    var query = parse_query_string();
+    srs_init_rtc("#txt_url", query);
+
+    $("#btn_publish").click(startPublish);
+    // Never play util windows loaded @see https://github.com/ossrs/srs/issues/2732
+    if (query.autostart === 'true') {
+        window.addEventListener("load", function(){ startPublish(); });
+    }
+});
+
+
+function parse_query_string(){
+    var obj = {};
+
+    // add the uri object.
+    // parse the host(hostname:http_port), pathname(dir/filename)
+    obj.host = window.location.host;
+    obj.hostname = window.location.hostname;
+    obj.http_port = (window.location.port == "")? 80:window.location.port;
+    obj.pathname = window.location.pathname;
+    if (obj.pathname.lastIndexOf("/") <= 0) {
+        obj.dir = "/";
+        obj.filename = "";
+    } else {
+        obj.dir = obj.pathname.slice(0, obj.pathname.lastIndexOf("/"));
+        obj.filename = obj.pathname.slice(obj.pathname.lastIndexOf("/"));
+    }
+
+    // pure user query object.
+    obj.user_query = {};
+
+    // parse the query string.
+    var query_string = String(window.location.search).replace(" ", "").split("?")[1];
+    if(query_string === undefined){
+        query_string = String(window.location.hash).replace(" ", "").split("#")[1];
+        if(query_string === undefined){
+            return obj;
+        }
+    }
+
+    __fill_query(query_string, obj);
+
+    return obj;
+}
+
+function __fill_query(query_string, obj) {
+    // pure user query object.
+    obj.user_query = {};
+
+    if (query_string.length === 0) {
+        return;
+    }
+
+    // split again for angularjs.
+    if (query_string.indexOf("?") >= 0) {
+        query_string = query_string.split("?")[1];
+    }
+
+    var queries = query_string.split("&");
+    for (var i = 0; i < queries.length; i++) {
+        var elem = queries[i];
+
+        var query = elem.split("=");
+        obj[query[0]] = query[1];
+        obj.user_query[query[0]] = query[1];
+    }
+
+    // alias domain for vhost.
+    if (obj.domain) {
+        obj.vhost = obj.domain;
+    }
+}
+
+function srs_init_rtc(id, query) {
+    update_nav();
+    $(id).val(build_default_rtc_url(query));
+}
+
+
+function build_default_rtc_url(query) {
+    // The format for query string to overwrite configs of server.
+    console.log('?eip=x.x.x.x to overwrite candidate. 覆盖服务器candidate(外网IP)配置');
+    console.log('?api=x to overwrite WebRTC API(1985).');
+    console.log('?schema=http|https to overwrite WebRTC API protocol.');
+
+    var server = (!query.server)? window.location.hostname:query.server;
+    var vhost = (!query.vhost)? window.location.hostname:query.vhost;
+    var app = (!query.app)? "live":query.app;
+    var stream = (!query.stream)? "livestream":query.stream;
+    var api = query.api? ':'+query.api : '';
+
+    var queries = [];
+    if (server !== vhost && vhost !== "__defaultVhost__") {
+        queries.push("vhost=" + vhost);
+    }
+    if (query.schema && window.location.protocol !== query.schema + ':') {
+        queries.push('schema=' + query.schema);
+    }
+    queries = user_extra_params(query, queries, true);
+
+    var uri = "webrtc://" + server + api + "/" + app + "/" + stream + "?" + queries.join('&');
+    while (uri.lastIndexOf("?") === uri.length - 1) {
+        uri = uri.slice(0, uri.length - 1);
+    }
+
+    return uri;
+};
+
+function update_nav() {
+    $("#srs_index").attr("href", "index.html" + window.location.search);
+    $("#nav_srs_player").attr("href", "srs_player.html" + window.location.search);
+    $("#nav_rtc_player").attr("href", "rtc_player.html" + window.location.search);
+    $("#nav_rtc_publisher").attr("href", "rtc_publisher.html" + window.location.search);
+    $("#nav_whip").attr("href", "whip.html" + window.location.search);
+    $("#nav_whep").attr("href", "whep.html" + window.location.search);
+    $("#nav_srs_publisher").attr("href", "srs_publisher.html" + window.location.search);
+    $("#nav_srs_chat").attr("href", "srs_chat.html" + window.location.search);
+    $("#nav_srs_bwt").attr("href", "srs_bwt.html" + window.location.search);
+    $("#nav_vlc").attr("href", "vlc.html" + window.location.search);
+}
+function user_extra_params(query, params, rtc) {
+    var queries = params || [];
+
+    for (var key in query.user_query) {
+        if (key === 'app' || key === 'autostart' || key === 'dir'
+            || key === 'filename' || key === 'host' || key === 'hostname'
+            || key === 'http_port' || key === 'pathname' || key === 'port'
+            || key === 'server' || key === 'stream' || key === 'buffer'
+            || key === 'schema' || key === 'vhost' || key === 'api'
+            || key === 'path'
+        ) {
+            continue;
+        }
+
+        if (query[key]) {
+            queries.push(key + '=' + query[key]);
+        }
+    }
+
+    return queries;
+}
+    </script>
+</body>
+</html>
