@@ -3,6 +3,56 @@ INSERT INTO users (user_id, email, email_verified ,firebase_uid, display_name, p
 VALUES ($1, $2, $3, $4, $5 ,$6,$7,$8,$9) 
 RETURNING *;
 
+-- name: GetUserWithRoleAndAccountByID :one
+SELECT
+    u.user_id,
+    u.firebase_uid,
+    u.email,
+    u.email_verified,
+    u.first_name,
+    u.last_name,
+    u.display_name,
+    u.photo_url,
+    u.phone_number,
+    ua.role,
+    a.account_id,
+    a.account_name
+FROM
+    users u
+JOIN
+    user_account_role ua ON u.user_id = ua.user_id
+JOIN
+    account a ON ua.account_id = a.account_id
+WHERE
+    u.user_id = $1;
+
+
+-- name: GetUserWithRoleAndAccountByFirebaseUID :one
+SELECT
+    u.user_id,
+    u.firebase_uid,
+    u.email,
+    u.email_verified,
+    u.first_name,
+    u.last_name,
+    u.display_name,
+    u.photo_url,
+    u.phone_number,
+    u.created_at,
+    u.updated_at,
+    ua.role,
+    a.account_id,
+    a.account_name
+FROM
+    users u
+JOIN
+    user_account_role ua ON u.user_id = ua.user_id
+JOIN
+    account a ON ua.account_id = a.account_id
+WHERE
+    u.firebase_uid = $1;
+
+
 -- name: GetUserByID :one
 SELECT * FROM users WHERE user_id = $1;
 

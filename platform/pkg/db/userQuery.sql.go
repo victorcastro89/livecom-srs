@@ -136,6 +136,130 @@ func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, er
 	return i, err
 }
 
+const getUserWithRoleAndAccountByFirebaseUID = `-- name: GetUserWithRoleAndAccountByFirebaseUID :one
+SELECT
+    u.user_id,
+    u.firebase_uid,
+    u.email,
+    u.email_verified,
+    u.first_name,
+    u.last_name,
+    u.display_name,
+    u.photo_url,
+    u.phone_number,
+    u.created_at,
+    u.updated_at,
+    ua.role,
+    a.account_id,
+    a.account_name
+FROM
+    users u
+JOIN
+    user_account_role ua ON u.user_id = ua.user_id
+JOIN
+    account a ON ua.account_id = a.account_id
+WHERE
+    u.firebase_uid = $1
+`
+
+type GetUserWithRoleAndAccountByFirebaseUIDRow struct {
+	UserID        pgtype.UUID
+	FirebaseUid   pgtype.Text
+	Email         string
+	EmailVerified pgtype.Bool
+	FirstName     pgtype.Text
+	LastName      pgtype.Text
+	DisplayName   pgtype.Text
+	PhotoUrl      pgtype.Text
+	PhoneNumber   pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	Role          pgtype.Text
+	AccountID     pgtype.UUID
+	AccountName   pgtype.Text
+}
+
+func (q *Queries) GetUserWithRoleAndAccountByFirebaseUID(ctx context.Context, firebaseUid pgtype.Text) (GetUserWithRoleAndAccountByFirebaseUIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithRoleAndAccountByFirebaseUID, firebaseUid)
+	var i GetUserWithRoleAndAccountByFirebaseUIDRow
+	err := row.Scan(
+		&i.UserID,
+		&i.FirebaseUid,
+		&i.Email,
+		&i.EmailVerified,
+		&i.FirstName,
+		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
+		&i.PhoneNumber,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Role,
+		&i.AccountID,
+		&i.AccountName,
+	)
+	return i, err
+}
+
+const getUserWithRoleAndAccountByID = `-- name: GetUserWithRoleAndAccountByID :one
+SELECT
+    u.user_id,
+    u.firebase_uid,
+    u.email,
+    u.email_verified,
+    u.first_name,
+    u.last_name,
+    u.display_name,
+    u.photo_url,
+    u.phone_number,
+    ua.role,
+    a.account_id,
+    a.account_name
+FROM
+    users u
+JOIN
+    user_account_role ua ON u.user_id = ua.user_id
+JOIN
+    account a ON ua.account_id = a.account_id
+WHERE
+    u.user_id = $1
+`
+
+type GetUserWithRoleAndAccountByIDRow struct {
+	UserID        pgtype.UUID
+	FirebaseUid   pgtype.Text
+	Email         string
+	EmailVerified pgtype.Bool
+	FirstName     pgtype.Text
+	LastName      pgtype.Text
+	DisplayName   pgtype.Text
+	PhotoUrl      pgtype.Text
+	PhoneNumber   pgtype.Text
+	Role          pgtype.Text
+	AccountID     pgtype.UUID
+	AccountName   pgtype.Text
+}
+
+func (q *Queries) GetUserWithRoleAndAccountByID(ctx context.Context, userID pgtype.UUID) (GetUserWithRoleAndAccountByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithRoleAndAccountByID, userID)
+	var i GetUserWithRoleAndAccountByIDRow
+	err := row.Scan(
+		&i.UserID,
+		&i.FirebaseUid,
+		&i.Email,
+		&i.EmailVerified,
+		&i.FirstName,
+		&i.LastName,
+		&i.DisplayName,
+		&i.PhotoUrl,
+		&i.PhoneNumber,
+		&i.Role,
+		&i.AccountID,
+		&i.AccountName,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users 
 SET email = $2, first_name = $3, last_name = $4, display_name =$5,photo_url=$6, phone_number = $5, updated_at = current_timestamp 

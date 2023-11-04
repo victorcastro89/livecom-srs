@@ -8,9 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Account struct {
+	AccountID   pgtype.UUID
+	AccountName pgtype.Text
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Live struct {
 	LiveID                      int32
-	UserID                      pgtype.UUID
+	AccountID                   pgtype.UUID
 	Title                       string
 	Description                 pgtype.Text
 	StartTime                   pgtype.Timestamp
@@ -63,4 +70,18 @@ type User struct {
 	PhoneNumber   pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type UserAccountRole struct {
+	UserID    pgtype.UUID
+	AccountID pgtype.UUID
+	Role      pgtype.Text
+}
+
+type UserInvite struct {
+	InviteID     pgtype.UUID
+	InvitedBy    pgtype.UUID
+	AccountID    pgtype.UUID
+	EmailInvited string
+	Status       string
 }

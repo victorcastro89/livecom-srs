@@ -1,11 +1,14 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: ["pkg/db/query/userQuery.sql", "pkg/db/query/livesQuery.sql"]
+    queries: ["pkg/db/query/userQuery.sql", "pkg/db/query/livesQuery.sql", "pkg/db/query/user_account_role.sql","pkg/db/query/accounts.sql"]
     schema: "db/migrations"
     gen:
       go:
         package: "db"
         sql_package: "pgx/v5"
         out: "pkg/db/"
+        overrides:
+        - db_type: "role_type"
+          go_type: "github.com/jackc/pgx/v5/pgtype.Text"
 

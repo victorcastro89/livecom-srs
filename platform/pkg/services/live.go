@@ -16,7 +16,7 @@ import (
 var (
 	ErrNotAllowed = errors.New("Not allow to acess this resource")
 )
-func (s *Service) CreateLive(ctx context.Context, usr db.User, arg repo.CreateLivePayload) (repo.LiveDecrypted, error) {
+func (s *Service) CreateLive(ctx context.Context, arg repo.CreateLivePayload) (repo.LiveDecrypted, error) {
 	randId,err := generateRandomID(20);
 	
 	if err != nil {
@@ -39,7 +39,7 @@ func (s *Service) CreateLive(ctx context.Context, usr db.User, arg repo.CreateLi
 	
 	}
 	
-	live.UserID = usr.UserID
+	live.AccountID = arg.AccountId
 	live.Title = arg.Title
 	live.Description.Scan(*arg.Description)
 	live.ScheduledStartTime.Scan(*arg.ScheduledStartTime)
@@ -105,30 +105,12 @@ func (s *Service) DeleteLive(ctx context.Context, liveID int32) error {
 	return s.db.DeleteLive(ctx, liveID)
 }
 
-func (s *Service) GetLiveByID(ctx context.Context, user db.User, liveId int32) (db.GetLiveByIDRow, error) {
 
-	live,err:= s.db.GetLiveByID(ctx, liveId )
-	if err != nil {
-		return db.GetLiveByIDRow{}, err
-	}
-
-	if(user.UserID != live.UserID ){
-	return  db.GetLiveByIDRow{}, ErrNotAllowed
-	}else {
-		return live, nil
-	}
-	
-
-
-}
 
 func (s *Service) GetLiveWithStatusByID(ctx context.Context,  liveId int32) (db.GetLiveWithStatusByIDRow, error) {
 	return s.db.GetLiveWithStatusByID(ctx, liveId)
 }
 
-func (s *Service) GetLiveWithUserDetails(ctx context.Context,  liveId int32) (db.GetLiveWithUserDetailsRow, error) {
-	return s.db.GetLiveWithUserDetails(ctx, liveId)
-}
 
 func (s *Service) GetLivesByUserID(ctx context.Context, userID pgtype.UUID) ([]db.Live, error) {
 	return s.db.GetLivesByUserID(ctx, userID)

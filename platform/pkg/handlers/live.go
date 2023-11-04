@@ -44,7 +44,7 @@ func (h *Handlers) CreateLiveHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
 		return
 	}	
-	live,err:=h.Service.CreateLive(c, *user, livePayload)	
+	live,err:=h.Service.CreateLive(c,  livePayload)	
 	if err == nil{
 		c.JSON(http.StatusOK, live)
 	}else{
@@ -71,7 +71,7 @@ func (h *Handlers) CreateLiveHandler(c *gin.Context) {
 // @Failure 500 {object} repo.RequestError "Internal Server Error"
 // @Router /webapi/live/{id} [get]
 	func (h *Handlers) GetLiveHandler(c *gin.Context) {
-		user:=h.GetUserFromContext(c)
+	
 		id := c.Param("id")
 		i, err := strconv.ParseInt(id, 10, 32) // Base 10, and bit size 32 for int32
 		if err != nil {
@@ -79,13 +79,15 @@ func (h *Handlers) CreateLiveHandler(c *gin.Context) {
 			return
 		}
 
-		live,err:=h.Service.GetLiveByID(c, *user, int32(i))
-		if err == services.ErrNotAllowed {
-			c.JSON(http.StatusForbidden, repo.RequestError{Err:services.ErrNotAllowed.Error()})
-			return 
-		}else if err != nil {
+		live,err:=h.Service.GetLiveWithStatusByID(c,  int32(i))
+		if err != nil {
 			c.JSON(http.StatusForbidden, repo.RequestError{Err: err.Error()})
 			return 
+		}
+
+		if(!h.UserHaveAcessToResource(c, GetLive, live.AccountID, nil)){
+			c.JSON(http.StatusForbidden, repo.RequestError{Err: "Not allow to acess this resource"})
+			return
 		}
 		c.JSON(http.StatusOK, live)
 		return 

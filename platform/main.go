@@ -214,8 +214,8 @@ func doMain(ctx context.Context) error {
 	// defer dbpool.Close()
 
     q := db.New(conn)
-
-	userService :=services.New(q);
+ 
+	userService :=services.New(q,conn);
 	handlers:= handlers.New(userService);
 
 	

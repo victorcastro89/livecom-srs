@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"livecom/logger"
+	"livecom/pkg/db"
 	"livecom/pkg/firebaseauth"
 	"livecom/pkg/handlers"
 
@@ -16,11 +17,20 @@ func SetupWebApiRoutes(ctx context.Context, handlers handlers.Handlers ,mux *htt
     router := gin.Default()
 	router.Use(authMiddleware(handlers))
 
+
+
+	router.GET("/accounts", handlers.GetAccountsAndRolesByUser)
+	router.POST("/addUserToAccount", handlers.AddUserToAccount)
+
+
 	router.POST("/live", handlers.CreateLiveHandler)
 	router.GET("/live/:id", handlers.GetLiveHandler)
 
     router.GET("/users/:id", handlers.GetUser)
-	router.POST("/users", handlers.CreateUser)
+	router.POST("/user", handlers. CreateOrGetUserWithAccountAndRole)
+
+	router.GET("test", handlers.Test);
+
     router.GET("/hello", func(c *gin.Context) {
 
 		c.JSON(http.StatusOK, gin.H{
@@ -40,7 +50,7 @@ func SetupWebApiRoutes(ctx context.Context, handlers handlers.Handlers ,mux *htt
 func authMiddleware(handlers handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
 	// Check if the request is POST /users
-		if c.Request.Method == "POST" && c.Request.URL.Path == "/users" {
+		if c.Request.Method == "POST" && c.Request.URL.Path == "/user" {
 			// Skip the action and proceed to the next handler
 			c.Next()
 			return
@@ -50,7 +60,11 @@ func authMiddleware(handlers handlers.Handlers) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-
+		if c.Request.URL.Path == "/test" {
+			// Skip the action and proceed to the next handler
+			c.Next()
+			return
+		}
 		firetoken := c.GetHeader("Authorization")
  		firebase := firebaseauth.GetInstance()
 
@@ -79,10 +93,30 @@ func authMiddleware(handlers handlers.Handlers) gin.HandlerFunc {
 			return
 		}
 		logger.Tf(c,"Authenticated user: %v\n", user)
-		
 		// Store the authenticated user in the gin context
-		c.Set("authenticated_user", user)
-
+		var U *db.User
+		U = &db.User{
+			UserID:    user.UserID,
+			FirebaseUid:   user.FirebaseUid,
+			Email:         user.Email,
+			EmailVerified: user.EmailVerified,
+			FirstName:     user.FirstName,
+			LastName:      user.LastName,
+			DisplayName:   user.DisplayName,
+			PhotoUrl:      user.PhotoUrl,
+			PhoneNumber:   user.PhoneNumber,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
+		}
+		c.Set("authenticated_user", U)
+		
+		accountsRoles ,err :=handlers.Service.GetUserAccountAndRoleRelation(c, user.UserID)	
+		if err != nil {
+			c.Set("accounts_roles", nil)
+			
+		}
+	
+		c.Set("accounts_roles", accountsRoles)
 		c.Next()
 	}
 }

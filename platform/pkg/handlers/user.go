@@ -12,6 +12,59 @@ import (
 	"github.com/google/uuid"
 )
 
+func (h *Handlers) Test(c *gin.Context)  {
+  u,err:= h.Service.GetUserByFirebaseUID(c, "test")
+  logger.T(c,"user ",u)
+  logger.T(c,"error ",err)
+  c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid UUID format"})
+  return
+}
+
+
+func (h *Handlers) GetAccountsAndRolesByUser(c *gin.Context) {
+    var accounts []db.GetAccountsAndRolesByUserIDRow
+    user := h.GetUserFromContext(c)
+    if user == nil {
+         return
+    }
+    logger.T(c,"user ",user.UserID)
+    acc, err := h.Service.GetAccountsAndRolesByUser(c, user.UserID)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+        return
+    }
+    for _,account := range acc{
+        if(h.UserHaveAcessToResource(c, GetAccounts, account.AccountID , nil)){
+            accounts = append(accounts, account)
+        }
+    }
+    if accounts == nil {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Not allow to acess this resource"})
+        return
+    }
+
+    c.JSON(http.StatusOK, accounts)
+}
+type RequestBody struct {
+    Role      string `json:"role"`
+    UserID    string `json:"user_id"`
+    AccountID string `json:"account_id"`
+}
+func (h *Handlers) AddUserToAccount(c *gin.Context) {
+    var requestBody RequestBody
+    if err := c.ShouldBindJSON(&requestBody); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+ result,err:= h.Service.AddUserToAccount(c, helpers.ConvertToPgUUID(uuid.MustParse(requestBody.UserID)), helpers.ConvertToPgUUID(uuid.MustParse(requestBody.AccountID)), requestBody.Role)
+ if err != nil {
+    logger.E(c, "Error adding user to account: %v",err)
+    c.JSON(http.StatusBadRequest, err.Error())
+    return 
+ }
+ c.JSON(http.StatusOK, result)
+
+}
 // @Summary Get a user by ID
 // @Description Retrieve user details by ID
 // @ID get-user
@@ -57,7 +110,7 @@ func (h *Handlers) GetUser(c *gin.Context) {
 // @Failure 403 {object} repo.RequestError "Forbidden"
 // @Failure 500 {object} repo.RequestError "Internal Server Error"
 // @Router /webapi/users [post]
-func (h *Handlers) CreateUser(c *gin.Context) {
+func (h *Handlers) CreateOrGetUserWithAccountAndRole(c *gin.Context) {
     // Bind JSON payload to CreateUserPayload struct
     var payload repo.CreateUserPayload
     if err := c.ShouldBindJSON(&payload); err != nil {
@@ -80,7 +133,7 @@ func (h *Handlers) CreateUser(c *gin.Context) {
   
 
     // Create user using the service
-    user, err := h.Service.CreateUser(c, token, payload)
+    user, err := h.Service.CreateOrGetUserAccountRole(c, token, payload)
     if err != nil {
 		logger.E(nil,err)
         c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -89,19 +142,4 @@ func (h *Handlers) CreateUser(c *gin.Context) {
 
     // Return JSON response with success message and user details
     c.JSON(http.StatusOK, user)
-}
-
-func (h *Handlers) GetUserFromContext(c *gin.Context) (*db.User) {
-	val , exists := c.Get("authenticated_user")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, repo.RequestError{Err: "Error getting Gin context authenticated_user from handlers.CreateLiveHandler"}) 
-        return nil
-        }
-		user, ok := val.(*db.User)
-		if !ok {
-			// Handle error: Unexpected type for user
-			c.JSON(http.StatusInternalServerError, repo.RequestError{Err:"Failed to process authenticated user"})
-			return nil
-		}
-        return user
 }
