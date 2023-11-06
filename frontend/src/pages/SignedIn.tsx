@@ -13,7 +13,7 @@ export const SignedIn = () => {
 
   return (
     <>
-      <Stack>
+      <Stack m={0} p={0}>
         <h1>Authenticated</h1>
         <h2>{auth.currentUser?.email ? auth.currentUser.email : null} </h2>
         <Button onClick={() => auth.signOut()}>Logout</Button>
