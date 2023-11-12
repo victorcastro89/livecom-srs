@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"livecom/logger"
-	"livecom/pkg/crypto"
 	"livecom/pkg/repo"
-	"livecom/pkg/services"
 	"log"
 	"net/http"
 	"strconv"
@@ -159,46 +157,59 @@ func (h *Handlers) Verify(c *gin.Context) {
 		 // Reset the request body to its original state for other handlers/middlewares
 		 c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		c.Header("Content-Type", "application/json")
+
 	
 		var verifyPayload repo.BroadCastVerify
 		if err := c.ShouldBindJSON(&verifyPayload); err != nil {
+		logger.T(c, err.Error())
 			c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
 			return
 		}	
-	
-		if(verifyPayload.Action == "on_publish"){
-			secret, err :=parseSecretParam(verifyPayload.Param)
-			if err != nil{
-				c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
-				return
-			}
-			hashedSecret:= crypto.HashMD5(secret)
-			logger.T(c,"Searching for a live with %s, %s",hashedSecret,verifyPayload.Stream)
-			live, err:=h.Service.GetLiveByEncryptedSecretStreamAppName(c, hashedSecret, verifyPayload.Stream, verifyPayload.App)
-			if err == services.ErrNotAllowed {
-				message := new(string)
-				*message = services.ErrNotAllowed.Error()
-				logger.T(c,"Did not found Live with this stream %v",live)
-				c.JSON(http.StatusForbidden, repo.VerifyResponse{
-					Code:  http.StatusForbidden,
-					Data:   message,
+
+		// if(verifyPayload.Action == "on_publish"){
+		// 	ffmpeg.IniciarTransmissao(c, *verifyPayload.StreamURL)
+			
+
+		// }
+
+		// if(verifyPayload.Action == "on_unpublish"){
+		// 	ffmpeg.FinalizarTransmissao(c,*verifyPayload.StreamURL)
+	    // }
+
+	// UNCOMENT THIS LATTER
+		// if(verifyPayload.Action == "on_publish"){
+		// 	secret, err :=parseSecretParam(verifyPayload.Param)
+		// 	if err != nil{
+		// 		c.JSON(http.StatusBadRequest, repo.RequestError{Err: err.Error()})
+		// 		return
+		// 	}
+		// 	hashedSecret:= crypto.HashMD5(secret)
+		// 	logger.T(c,"Searching for a live with %s, %s",hashedSecret,verifyPayload.Stream)
+		// 	live, err:=h.Service.GetLiveByEncryptedSecretStreamAppName(c, hashedSecret, verifyPayload.Stream, verifyPayload.App)
+		// 	if err == services.ErrNotAllowed {
+		// 		message := new(string)
+		// 		*message = services.ErrNotAllowed.Error()
+		// 		logger.T(c,"Did not found Live with this stream %v",live)
+		// 		c.JSON(http.StatusForbidden, repo.VerifyResponse{
+		// 			Code:  http.StatusForbidden,
+		// 			Data:   message,
 				
-				})
-				return
-			}else if err != nil {
-				message := new(string)
-				*message = err.Error()
-				c.JSON(http.StatusInternalServerError, repo.VerifyResponse{
-					Code:  http.StatusForbidden,
-					Data:   message,
+		// 		})
+		// 		return
+		// 	}else if err != nil {
+		// 		message := new(string)
+		// 		*message = err.Error()
+		// 		c.JSON(http.StatusInternalServerError, repo.VerifyResponse{
+		// 			Code:  http.StatusForbidden,
+		// 			Data:   message,
 				
-				})
-				return
-			}
+		// 		})
+		// 		return
+		// 	}
 
 			
-			logger.T(c,"live %v",live)
-		}
+		// 	logger.T(c,"live %v",live)
+		// }
 		c.JSON(200, repo.VerifyResponse{
 			Code:   0,
 			Data:   nil,

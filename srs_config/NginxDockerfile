@@ -1,0 +1,10 @@
+ARG ARCH
+
+FROM ${ARCH}nginx:latest AS dist
+
+ARG SRS_STACK_IP
+ENV SRS_STACK_SERVER=$SRS_STACK_IP
+ADD hls.edge.conf /etc/nginx/templates/default.conf.template
+
+# Create the proxy cache directory for NGINX.
+RUN mkdir -p /data/nginx-cache

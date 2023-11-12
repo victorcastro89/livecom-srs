@@ -6,6 +6,7 @@ import {
   Drawer,
   Dropdown,
   List,
+  ListItem,
   ListItemButton,
   Menu,
   MenuButton,
@@ -16,7 +17,7 @@ import {
   Typography,
 } from '@mui/joy';
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { styled, useColorScheme, useTheme } from '@mui/joy/styles';
 import Button from '@mui/joy/Button';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -26,6 +27,12 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import useToggleColorScheme from '../hooks/useToggleColorScheme';
 import LogoutIcon from '@mui/icons-material/Logout';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../features/auth/authSlice';
+import { getUserInitials } from '../helpers/helpers';
+import { useAppDispatch } from '../hooks';
+import { logOut } from '../features/auth/authThunk';
+import { DarkModeToggle } from './DarkModeToggle';
 function ModeToggle() {
   const { mode, setMode } = useColorScheme();
   return (
@@ -61,6 +68,9 @@ export const MobileHeader: React.FC = () => {
   const [open, setOpen] = React.useState(false);
   const [mode, toggleColorScheme] = useToggleColorScheme();
   const theme = useTheme();
+  const user = useSelector(selectUser);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   return (
     <Box
       sx={{
@@ -74,7 +84,7 @@ export const MobileHeader: React.FC = () => {
       <Box sx={{ flexGrow: 0 }}>
         <CustomFocusButton variant="plain" onClick={() => setOpen(true)}>
           <Avatar sx={{ mr: 1 }} variant="outlined">
-            VC
+            {getUserInitials(user.data)}
           </Avatar>
           <MenuIcon
             htmlColor={theme.palette.mode === 'dark' ? 'white' : 'black'}
@@ -100,9 +110,9 @@ export const MobileHeader: React.FC = () => {
             alignItems={'center'}
             mt={8}
           >
-            <Avatar variant="outlined">VC</Avatar>
+            <Avatar variant="outlined">{getUserInitials(user.data)}</Avatar>
 
-            <Typography level="title-sm">Your name</Typography>
+            <Typography level="title-sm">{user.data.Email}</Typography>
           </Stack>
           <Divider sx={{ mt: 8 }}></Divider>
           <List
@@ -114,26 +124,21 @@ export const MobileHeader: React.FC = () => {
               '& > div': { justifyContent: 'center' },
             }}
           >
-            <ListItemButton sx={{ fontWeight: 'lg' }}>Home</ListItemButton>
-            <ListItemButton>Team</ListItemButton>
-
-            <Divider sx={{ mt: 8 }}></Divider>
-            <ListItemButton onClick={toggleColorScheme}>
-              {mode === 'dark' ? (
-                <>
-                  {' '}
-                  <LightModeIcon />
-                  <Typography level="title-sm">Ligth Mode</Typography>{' '}
-                </>
-              ) : (
-                <>
-                  {' '}
-                  <DarkModeIcon />
-                  <Typography level="title-sm">Dark Mode</Typography>{' '}
-                </>
-              )}
+            <ListItemButton
+              onClick={() => navigate('/home')}
+              sx={{ fontWeight: 'lg' }}
+            >
+              Home
             </ListItemButton>
-            <ListItemButton>
+            <ListItemButton onClick={() => navigate('/team')}>
+              Team
+            </ListItemButton>
+            <Divider sx={{ mt: 8 }}></Divider>
+            <ListItem>
+              <DarkModeToggle />
+              <Typography level="title-sm">Dark Mode</Typography>{' '}
+            </ListItem>
+            <ListItemButton onClick={() => dispatch(logOut())}>
               <LogoutIcon />
               <Typography level="title-sm">Log out</Typography>{' '}
             </ListItemButton>

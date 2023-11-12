@@ -6,6 +6,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type UserResponse struct {
+	db.GetUserWithRoleAndAccountByIDRow
+	Roles []db.GetAccountsAndRolesByUserIDRow
+}
 type CreateUserPayload struct {
 	FirstName   *string `json:"first_name,omitempty" validate:"omitempty,min=3,max=25"`
 	LastName    *string `json:"last_name,omitempty" validate:"omitempty,min=3,max=25"`
@@ -43,10 +48,10 @@ type BroadCastVerify struct {
 	ClientID  *string `json:"client_id,omitempty"`
 	IP        *string `json:"ip,omitempty"`
 	Vhost     *string `json:"vhost,omitempty"`
-	App       string `json:"app, binding:"required"`
+	App       string `json:"app"`
 	TcURL     *string `json:"tcUrl,omitempty"`
 	Stream    string `json:"stream"  binding:"required"`
-	Param     string `json:"param"  binding:"required"`
+	Param     string `json:"param,omitempty"  `
 	StreamURL *string `json:"stream_url,omitempty"`
 	StreamID  *string `json:"stream_id,omitempty"`
 }

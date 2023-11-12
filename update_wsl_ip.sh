@@ -7,4 +7,4 @@ WSL_IP=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
 export WSL_IP
 echo "Running with WSL_IP=$WSL_IP"
 # Start your Docker Compose stack
-docker-compose up
+ docker-compose up

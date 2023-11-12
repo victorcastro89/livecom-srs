@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "ovenplayer": "^0.10.32"
+  },
+  "devDependencies": {
+    "@types/ovenplayer": "^0.10.9"
+  }
+}

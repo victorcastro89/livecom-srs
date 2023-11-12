@@ -1,27 +1,32 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useEffect } from 'react';
-import { redirect } from 'react-router-dom';
+import { redirect, useLocation } from 'react-router-dom';
 import {
   setFirebaseUser,
-  logout,
   AuthStateType,
   FirebaseAuthStateType,
+  setFirebaseUserError,
 } from './authSlice';
 import { useAppDispatch } from '../../hooks';
 import { getAuth } from 'firebase/auth';
 
 import { useNavigate } from 'react-router-dom';
 import { firebaseInstance } from '../../App';
+import store from '../../store';
+import { createOrGetUser, logOut } from './authThunk';
+import { Roles } from '../../factory/apiFactory';
 
 const AuthListener = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
+
   useEffect(() => {
     const auth = getAuth(firebaseInstance);
     const unsubscribe = auth.onAuthStateChanged((user: any) => {
       console.log('Auth State changed');
 
-      console.log(user?.accessToken);
       let u: FirebaseAuthStateType = {
         email: user?.email ? user?.email : null,
         emailVerified: user?.emailVerified ? user?.emailVerified : null,
@@ -40,9 +45,34 @@ const AuthListener = () => {
       // }
       if (user?.uid) {
         dispatch(setFirebaseUser(u));
+        store
+          .dispatch(
+            createOrGetUser({
+              first_name: user.displayName || '',
+              last_name: '',
+              phone_number: user.phoneNumber || '',
+              photo_url: user.photoURL || '',
+              account_name: user.email?.split('@')[0] || '',
+              role: Roles.OWNER,
+            })
+          )
+          .unwrap()
+          .then(() => {
+            navigate(currentPath);
+          })
+          //TOTO : handle error
+          .catch((err) => {
+            console.log('error on Dispatch createOrGetUser', err);
+            store.dispatch(
+              setFirebaseUserError((err as string) || 'Failed to login')
+            );
+            console.log('Redirecting');
+            dispatch(logOut());
+            navigate('/login');
+          });
       } else {
         console.log('Redirecting');
-        dispatch(logout());
+        dispatch(logOut());
         navigate('/login');
       }
     });

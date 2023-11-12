@@ -16,10 +16,11 @@ import { browserLocalPersistence, getAuth } from 'firebase/auth';
 import theme from './theme/theme';
 import { ApidDocs } from './pages/ApiDocs';
 
-import { Box, Grid } from '@mui/joy';
 import { useMediaQuery } from '@mui/material';
 
 import { MainMobile } from './pages/MainMobile';
+import { TeamPage } from './pages/Team';
+import { Player } from './pages/Player';
 // import './css/firebase_styling.global.css';
 // Configure Firebase.
 const config: FirebaseOptions = {
@@ -32,8 +33,6 @@ export const auth = getAuth(firebaseInstance);
 
 auth.setPersistence(browserLocalPersistence).then(() => {});
 function Layout() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
@@ -60,14 +59,22 @@ const router = createBrowserRouter([
     path: '/login',
     element: <LoginLayout />,
   },
+
   {
     element: <Layout />,
     children: [
       {
-        path: '/',
+        path: '/login',
         element: <Login />,
       },
-
+      {
+        path: '/team',
+        element: <TeamPage />,
+      },
+      {
+        path: '/',
+        element: <Player />,
+      },
       {
         path: '/signedIn',
         element: <SignedIn />,

@@ -643,3 +643,22 @@ func (v *ForwardTask) doForward(ctx context.Context, input *SrsStream) error {
 
 	return nil
 }
+
+
+ffmpeg -f flv -i "rtmp://localhost/live?vhost=SecretPasswordVhost/live" \
+-vf "scale='if(gt(iw,ih),if(gt(iw,1920),1920,-2),if(gt(ih,1920),trunc(1080*iw/ih/2)*2,-2))':'if(gt(iw,ih),if(gt(ih,1080),1080,-2),if(gt(iw,1080),trunc(1920*ih/iw/2)*2,-2))'" \
+-loglevel debug -vcodec libx264 -crf 40 -preset superfast -r 30.00 -threads 1 -profile:v high \
+-g 120 -tune zerolatency -vlevel 4 -acodec aac -b:a 256000 -ac 2 \
+-f flv -y "rtmp://localhost/live?vhost=SecretPasswordVhost-HLS/live_1080" 
+
+ffmpeg -f flv -i "rtmp://localhost/live?vhost=SecretPasswordVhost/live" \
+-vf "scale='if(gt(iw/ih,1),1280,trunc(oh*a/2)*2)':'if(gt(iw/ih,1),trunc(ow/a/2)*2,720)':force_original_aspect_ratio=decrease" \
+-loglevel debug -vcodec libx264 -b:v 4500000 -r 30.00 -threads 1 -profile:v high \
+-preset superfast -g 120 -tune zerolatency -vlevel 4 -acodec aac -b:a 256000 -ac 2 \
+-f flv -y "rtmp://localhost/live?vhost=SecretPasswordVhost-HLS/live_720"
+
+ffmpeg -f flv -i "rtmp://localhost/live?vhost=SecretPasswordVhost/live" \
+-vf "scale='if(gt(iw/ih,1),854,trunc(oh*a/2)*2)':'if(gt(iw/ih,1),trunc(ow/a/2)*2,480)':force_original_aspect_ratio=decrease" \
+-loglevel debug -vcodec libx264 -b:v 4500000 -r 30.00 -threads 1 -profile:v high \
+-preset superfast -g 120 -tune zerolatency -vlevel 4 -acodec aac -b:a 256000 -ac 2 \
+-f flv -y "rtmp://localhost/live?vhost=SecretPasswordVhost-HLS/live_480"

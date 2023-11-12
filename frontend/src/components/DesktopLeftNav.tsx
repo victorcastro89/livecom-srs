@@ -13,6 +13,7 @@ import SmartDisplay from '@mui/icons-material/SmartDisplay';
 import makeStyles from '@mui/material/styles/makeStyles';
 import { ListItemText } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
+import { useNavigate } from 'react-router-dom';
 const NoHoverListItem = styled(ListItem)(({ theme }) => ({
   '&:hover': {
     backgroundColor: 'transparent !important', // Use !important to override MUI styles if necessary
@@ -70,6 +71,7 @@ const MyListItem = styled(ListItem)(({ theme }) => ({
   },
 }));
 export const DesktopLeftNav: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <Box
       sx={(theme) => ({
@@ -104,7 +106,7 @@ export const DesktopLeftNav: React.FC = () => {
           ></Box>
           {/* </ListItemButton> */}
         </NoHoverListItem>
-        <MyListItem>
+        <MyListItem onClick={() => navigate('/home')}>
           <Tooltip title="Home" placement="right" variant="soft">
             <ListItemButton>
               <ListItemDecorator>
@@ -113,7 +115,7 @@ export const DesktopLeftNav: React.FC = () => {
             </ListItemButton>
           </Tooltip>
         </MyListItem>
-        <MyListItem>
+        <MyListItem onClick={() => navigate('/team')}>
           <Tooltip title="Team" placement="right" variant="soft">
             <ListItemButton>
               <ListItemDecorator>

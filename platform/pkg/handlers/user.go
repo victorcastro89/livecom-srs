@@ -105,12 +105,13 @@ func (h *Handlers) GetUser(c *gin.Context) {
 // @Produce json
 // @Param Authorization header string true "<access_token>"
 // @Param payload body repo.CreateUserPayload true "CreateUserPayload  object"
-// @Success 200 {object} db.User "Successfully created"
+// @Success 200 {object} repo.UserResponse "Successfully created"
 // @Failure 400 {object} repo.RequestError "Bad request" '{"error": "string"}'
 // @Failure 403 {object} repo.RequestError "Forbidden"
 // @Failure 500 {object} repo.RequestError "Internal Server Error"
 // @Router /webapi/users [post]
 func (h *Handlers) CreateOrGetUserWithAccountAndRole(c *gin.Context) {
+
     // Bind JSON payload to CreateUserPayload struct
     var payload repo.CreateUserPayload
     if err := c.ShouldBindJSON(&payload); err != nil {

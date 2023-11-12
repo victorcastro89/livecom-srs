@@ -1,0 +1,53 @@
+version: '3.1'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: livecom-psql
+    environment:
+      POSTGRES_USER: livecom
+      POSTGRES_PASSWORD: livecom
+      POSTGRES_DB: livecom
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    networks:
+      - livecom-net
+
+  srs:
+    container_name: srs
+    image: ossrs/srs:5
+    environment:
+      - CANDIDATE=172.28.71.40
+    ports:
+      - "1935:1935"
+      - "1985:1985"
+      - "8080:8080"
+      - "8000:8000/udp"
+      - "10080:10080/udp"
+    volumes:
+      - ./platform/containers/data/config:/usr/local/srs/containers/data/config
+      - ./platform/containers/conf/srs.release-ubuntu-change-your-ip.conf:/usr/local/srs/conf/srs.conf
+      - ./platform/containers/objs/nginx:/usr/local/srs/objs/nginx
+    stdin_open: true
+    tty: true
+    extra_hosts:
+     - "wsl2:${WSL_IP}"  # Replace <WSL2_IP_ADDRESS> with the actual IP address of your WSL 2 instance
+
+    networks:
+      - livecom-net
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - "./redisdata:/data"
+    networks:
+      - livecom-net
+
+networks:
+  livecom-net:
+    driver: bridge

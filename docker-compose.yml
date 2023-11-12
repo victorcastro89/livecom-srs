@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.8'
 
 services:
   postgres:
@@ -15,11 +15,15 @@ services:
     networks:
       - livecom-net
 
-  srs:
-    container_name: srs
+  srs_origin:
+    container_name: srs_origin                                             
     image: ossrs/srs:5
     environment:
       - CANDIDATE=172.28.71.40
+    ulimits:
+      nofile:
+        soft: 10240
+        hard: 10240
     ports:
       - "1935:1935"
       - "1985:1985"
@@ -27,14 +31,99 @@ services:
       - "8000:8000/udp"
       - "10080:10080/udp"
     volumes:
-      - ./platform/containers/data/config:/usr/local/srs/containers/data/config
-      - ./platform/containers/conf/srs.release-ubuntu-change-your-ip.conf:/usr/local/srs/conf/srs.conf
-      - ./platform/containers/objs/nginx:/usr/local/srs/objs/nginx
+      - ./srs_config/config:/usr/local/srs/containers/data/config
+      - ./srs_config/srs.release-ubuntu-change-your-ip.conf:/usr/local/srs/conf/srs.conf
+      - ./srs_config/objs/nginx:/usr/local/srs/objs/nginx
     stdin_open: true
     tty: true
     extra_hosts:
      - "wsl2:${WSL_IP}"  # Replace <WSL2_IP_ADDRESS> with the actual IP address of your WSL 2 instance
+     - "srs_origin:127.0.0.1"
+    networks:
+      - livecom-net
+  
+  nginx_hls1:
+    container_name: hls1
+    image: nginx:latest
+    ulimits:
+       nofile:
+        soft: 65535
+        hard: 65535
+    volumes:
+        - ./srs_config/hls.edge.conf:/etc/nginx/nginx.conf
+        - ./data/nginx-cache:/data/nginx-cache  
+    ports:
+      - "8081:8081"
+    depends_on:
+      - srs_origin  
+    networks:
+      - livecom-net
 
+  nginx_hls2:
+    container_name: hls2
+    image: nginx:latest
+    ulimits:
+       nofile:
+        soft: 65535
+        hard: 65535
+    volumes:
+        - ./srs_config/hls.edge.conf:/etc/nginx/nginx.conf
+        - ./data/nginx-cache:/data/nginx-cache  
+    ports:
+      - "8082:8081"
+    depends_on:
+      - srs_origin  
+    networks:
+      - livecom-net
+  
+  nginx_hls3:
+    container_name: hls3
+    image: nginx:latest
+    ulimits:
+       nofile:
+        soft: 65535
+        hard: 65535
+    volumes:
+        - ./srs_config/hls.edge.conf:/etc/nginx/nginx.conf
+        - ./data/nginx-cache:/data/nginx-cache  
+    ports:
+      - "8083:8081"
+    depends_on:
+      - srs_origin  
+    networks:
+      - livecom-net
+
+  nginx_hls4:
+    container_name: hls4
+    image: nginx:latest
+    ulimits:
+       nofile:
+        soft: 65535
+        hard: 65535    
+    volumes:
+        - ./srs_config/hls.edge.conf:/etc/nginx/nginx.conf
+        - ./data/nginx-cache:/data/nginx-cache  
+    ports:
+      - "8084:8081"
+    depends_on:
+      - srs_origin  
+    networks:
+      - livecom-net
+
+  lb:
+    image: nginx:latest
+    ulimits:
+       nofile:
+        soft: 65535
+        hard: 65535
+    container_name: lb
+    ports:
+      - "80:80"
+    volumes:
+      - ./srs_config/load_balancer.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - nginx_hls1
+      - nginx_hls2
     networks:
       - livecom-net
 

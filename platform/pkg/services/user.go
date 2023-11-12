@@ -69,16 +69,17 @@ func (s *Service) GetUserAccountAndRoleRelation(ctx context.Context, userID pgty
 	return s.db.GetUserAccountAndRoleRelation(ctx, userID)
 }
 
-func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.Token ,payload repo.CreateUserPayload) (	db.GetUserWithRoleAndAccountByIDRow, error) {
+func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.Token ,payload repo.CreateUserPayload) (	repo.UserResponse, error) {
 	if(IsValidUserRole(payload.Role)==false){
-		return db.GetUserWithRoleAndAccountByIDRow{},ErrInvalidRole
+		return repo.UserResponse{},ErrInvalidRole
 	}
 	logger.T(ctx,"CreateUserAccountRole ",token.UID ) 
 	uexists,_:=s.GetUserByFirebaseUID(ctx, token.UID) 
-
+	roles,err:= s.db.GetAccountsAndRolesByUserID(ctx,uexists.UserID)
 	if(uexists!=nil){
-		return db.GetUserWithRoleAndAccountByIDRow{
-			UserID:uexists.UserID,
+		return repo.UserResponse{
+			GetUserWithRoleAndAccountByIDRow: db.GetUserWithRoleAndAccountByIDRow{
+		UserID:uexists.UserID,
 		FirebaseUid:uexists.FirebaseUid,
 		Email:uexists.Email,
 		EmailVerified:uexists.EmailVerified,
@@ -91,22 +92,24 @@ func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.To
 		AccountID: uexists.AccountID,
 		AccountName:uexists.AccountName,
 	
-		} ,nil
+		},
+		Roles: roles,
+		},nil
 	
 	}
 	tx,err :=s.dbCon.Begin(ctx);
 	if(err!=nil){
-		return 	db.GetUserWithRoleAndAccountByIDRow{},err
+		return 	repo.UserResponse{},err
 	}
 	defer tx.Rollback(ctx)
 	qtx := s.db.WithTx(tx)
 	u, err := s.createUserTx(ctx,qtx, token, payload)
 	if err != nil {
-		return db.GetUserWithRoleAndAccountByIDRow{},err
+		return repo.UserResponse{},err
 	}
 	accUid,err:=GeneratePsqlUUID();
 	if err != nil {
-		return db.GetUserWithRoleAndAccountByIDRow{},err
+		return repo.UserResponse{},err
 	}
 	a,err:= qtx.CreateAccount(ctx, db.CreateAccountParams{
 		AccountID:  *accUid,
@@ -114,7 +117,7 @@ func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.To
 	})
 	if err != nil {
 		logger.E(ctx,"Create account error" ,err)
-		return db.GetUserWithRoleAndAccountByIDRow{},err
+		return repo.UserResponse{},err
 	}
 
 	userAccountRole,err := qtx.CreateUserAccountRoleRelation(ctx, db.CreateUserAccountRoleRelationParams{
@@ -125,15 +128,16 @@ func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.To
 
 	if err != nil {
 		logger.E(ctx,"userAccountRole" ,err)
-		return db.GetUserWithRoleAndAccountByIDRow{},err
+		return repo.UserResponse{},err
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
 		logger.E(ctx,"Commit error" ,err)
-		return db.GetUserWithRoleAndAccountByIDRow{},err
+		return repo.UserResponse{},err
 	}
 
-	return db.GetUserWithRoleAndAccountByIDRow{
+	return repo.UserResponse{
+		GetUserWithRoleAndAccountByIDRow: db.GetUserWithRoleAndAccountByIDRow{
 	    UserID:u.UserID,
     FirebaseUid:u.FirebaseUid,
     Email:u.Email,
@@ -147,7 +151,14 @@ func (s *Service) CreateOrGetUserAccountRole(ctx context.Context, token *auth.To
     AccountID: a.AccountID,
     AccountName:a.AccountName,
 
-	} ,nil
+	},
+	Roles: []db.GetAccountsAndRolesByUserIDRow{
+		{
+		UserID:u.UserID,
+		AccountID:a.AccountID,
+		Role:userAccountRole.Role,
+		}} ,
+	},nil
 
 }
 

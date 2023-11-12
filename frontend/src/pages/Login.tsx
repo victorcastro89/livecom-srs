@@ -15,12 +15,15 @@ import store from '../store';
 import { auth } from '../App';
 import { EmailAuthProvider, GoogleAuthProvider } from 'firebase/auth';
 import '../css/firebase_styling.global.css';
-import { Box, Typography } from '@mui/joy';
+import { Box, Button, Typography } from '@mui/joy';
 import { createOrGetUser } from '../features/auth/authThunk';
 import { Roles } from '../factory/apiFactory';
 import { useNavigate } from 'react-router-dom';
 
+import useToggleColorScheme from '../hooks/useToggleColorScheme';
+
 export const Login = () => {
+  const [mode, toggleColorScheme] = useToggleColorScheme();
   const navigate = useNavigate();
   const signInSuccessWithAuthResult = (
     res: { additionalUserInfo: any; user: any },
@@ -146,6 +149,7 @@ export const Login = () => {
           >
             Livee
           </Typography>
+
           <StyledFirebaseAuth uiConfig={uiConfig} firebaseAuth={auth} />
         </Box>
       </Box>

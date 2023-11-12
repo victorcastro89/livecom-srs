@@ -1,1 +1,3 @@
 EncryptionKey: "81d1070ee37c70cd73fdf9b592f67a4d" 
+SrsServerURL: "http://localhost:2022"
+WebsiteURL: "http://localhost:3001"

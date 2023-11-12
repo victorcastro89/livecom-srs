@@ -3,21 +3,33 @@ package api
 import (
 	"context"
 	"livecom/logger"
+	"livecom/pkg/config"
 	"livecom/pkg/db"
 	"livecom/pkg/firebaseauth"
 	"livecom/pkg/handlers"
-
 	"net/http"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 
 func SetupWebApiRoutes(ctx context.Context, handlers handlers.Handlers ,mux *http.ServeMux) error {
     router := gin.Default()
+
+	Corsconfig := cors.Config{
+        AllowOrigins:   []string{config.Cfg.WebsiteURL, config.Cfg.SrsServerURL},
+        AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+        ExposeHeaders:    []string{"Content-Length"},
+        AllowCredentials: true,
+        MaxAge:           12 * time.Hour,
+    }
+
+  
+	router.Use(cors.New(Corsconfig))
 	router.Use(authMiddleware(handlers))
-
-
 
 	router.GET("/accounts", handlers.GetAccountsAndRolesByUser)
 	router.POST("/addUserToAccount", handlers.AddUserToAccount)
@@ -49,7 +61,7 @@ func SetupWebApiRoutes(ctx context.Context, handlers handlers.Handlers ,mux *htt
 
 func authMiddleware(handlers handlers.Handlers) gin.HandlerFunc {
 	return func(c *gin.Context) {
-	// Check if the request is POST /users
+
 		if c.Request.Method == "POST" && c.Request.URL.Path == "/user" {
 			// Skip the action and proceed to the next handler
 			c.Next()

@@ -7,6 +7,8 @@ import (
 // Config represents your application configuration.
 type Config struct {
     EncryptionKey string
+    WebsiteURL     string
+    SrsServerURL   string
     // Add other configuration fields here
 }
 

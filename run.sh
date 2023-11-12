@@ -27,3 +27,13 @@ docker run --name srs --rm -it \
     -p 1935:1935 -p 1985:1985 -p 8080:8080 -p 8000:8000/udp -p 10080:10080/udp \
     --env CANDIDATE=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1) \
  ossrs/srs:5
+
+docker rm -f redis srs 2>/dev/null &&
+docker run --name redis --rm -it -v $HOME/data/redis:/data -p 6379:6379 -d redis &&
+touch platform/containers/data/config/srs.server.conf platform/containers/data/config/srs.vhost.conf &&
+docker run --name srs --rm -it \
+    -v $(pwd)/platform/containers/data/config:/usr/local/srs/containers/data/config \
+    -v $(pwd)/platform/containers/conf/srs.release-ubuntu-change-your-ip.conf:/usr/local/srs/conf/docker.conf \
+    -v $(pwd)/platform/containers/objs/nginx:/usr/local/srs/objs/nginx \
+    -p 1935:1935 -p 1985:1985 -p 8080:8080 -p 8000:8000/udp -p 10080:10080/udp \
+    -d ossrs/srs:5
